@@ -12,6 +12,7 @@ const __dirname = dirname(__filename);
 const distDir = path.resolve(__dirname, '../../dist/copilot_web');
 const files = glob.sync(`${distDir}/**/App-*.js`);
 
+// 处理依赖映射
 files.forEach(file => {
     console.log('start modify', file)
     let content = fs.readFileSync(file, 'utf-8');
@@ -47,5 +48,25 @@ files.forEach(file => {
         }
     } else {
         console.log(`No __vite__mapDeps found in ${path.basename(file)}`);
+    }
+});
+
+// 处理 logo 图片路径
+const allJsFiles = glob.sync(`${distDir}/**/*.js`);
+allJsFiles.forEach(file => {
+    let content = fs.readFileSync(file, 'utf-8');
+    
+    // 查找包含 logo 图片路径的内容
+    if (content.includes('/copilot_web/assets/logo-')) {
+        console.log('Found logo reference in', file);
+        
+        // 替换 logo 路径的引用方式
+        content = content.replace(
+            /(?<=[,{]\s*E=)"\/copilot_web\/assets\/logo-[^"]+"/g,
+            `(window.comfyAPI?.api?.api?.api_base ? \`\${window.comfyAPI.api.api.api_base.substring(1)}/copilot_web/assets/logo-BTZhX0BN.png\` : "/copilot_web/assets/logo-BTZhX0BN.png")`
+        );
+        
+        fs.writeFileSync(file, content, 'utf-8');
+        console.log(`Modified logo path in ${path.basename(file)}`);
     }
 }); 
