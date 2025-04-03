@@ -19,12 +19,19 @@ interface NodeInstallGuideProps {
 export function NodeInstallGuide({ content, onLoadSubgraph }: NodeInstallGuideProps) {
     const response = JSON.parse(content);
     const nodeInfos = response.ext?.find((item: { type: string }) => item.type === 'node_install_guide')?.data || [];
+    
+    const uniqueNodeInfos = nodeInfos.reduce((acc: any[], node) => {
+        if (!acc.some(n => n.name === node.name)) {
+            acc.push(node);
+        }
+        return acc;
+    }, []);
 
     return (
         <div>
             <p>在加载graph到画布前，以下节点有待安装，请跳转到对应的github安装节点：</p>
             <div className="grid grid-cols-2 gap-3">
-                {nodeInfos.map((node: any, index: number) => (
+                {uniqueNodeInfos.map((node: any, index: number) => (
                     <div 
                         key={index}
                         className="w-full p-3 bg-white rounded-lg border border-gray-200 
