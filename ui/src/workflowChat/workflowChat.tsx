@@ -31,12 +31,21 @@ import rehypeExternalLinks from 'rehype-external-links';
 // Define the Tab type - We should import this from context to ensure consistency
 import type { TabType } from '../context/ChatContext';
 import { ParameterDebugInterface } from "../components/debug/ParameterDebugInterfaceV2";
+import { COPILOT_EVENTS } from "../constants/events";
+import { app } from "../utils/comfyapp";
 
 interface WorkflowChatProps {
     onClose?: () => void;
     visible?: boolean;
     triggerUsage?: boolean;
     onUsageTriggered?: () => void;
+}
+
+const enum DispatchEventType {
+    NONE = 'None',
+    USAGE = 'Usage',
+    PARAMETERS = 'Parameters',
+    DOWNSTREAM_NODES = 'DownstreamNodes'
 }
 
 // 优化公告组件样式 - 更加美观和专业，支持Markdown
@@ -170,7 +179,8 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
     const [showAnnouncement, setShowAnnouncement] = useState<boolean>(false);
     // 添加 AbortController 引用
     const abortControllerRef = useRef<AbortController | null>(null);
-
+    const currentSelectedNode = useRef<any>(selectedNode)
+    const [dispatchEventType, setDispatchEventType] = useState<DispatchEventType>(DispatchEventType.NONE);
     // 使用自定义 hooks，只在visible为true且activeTab为chat时启用
     useMousePosition(visible && activeTab === 'chat');
     useNodeSelection(visible);
@@ -182,6 +192,21 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
     //         messageDivRef.current.scrollTop = messageDivRef.current.scrollHeight
     //     }
     // }, [messages])
+
+    useEffect(() => {
+        switch(dispatchEventType) {
+            case DispatchEventType.USAGE:
+                onUsage()
+            break;
+            case DispatchEventType.PARAMETERS:
+                onParameters()
+            break;
+            case DispatchEventType.DOWNSTREAM_NODES:
+                onDownstreamNodes();
+            break;
+        }
+        setDispatchEventType(DispatchEventType.NONE)
+    }, [dispatchEventType])
 
     useEffect(() => {
         if (activeTab !== 'chat') return;
@@ -231,6 +256,28 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
         const savedScreenState = localStorage.getItem("screenState");
         if (savedScreenState) {
             dispatch({ type: 'SET_SCREEN_STATE', payload: JSON.parse(savedScreenState) });
+        }
+
+        const onToolBoxUsage = () => {
+            setDispatchEventType(DispatchEventType.USAGE);
+        }
+
+        const onToolBoxParameters = () => {
+            setDispatchEventType(DispatchEventType.PARAMETERS);
+        }
+
+        const onToolBoxDownstreamNodes = () => {
+            setDispatchEventType(DispatchEventType.DOWNSTREAM_NODES);
+        }
+
+        window.addEventListener(COPILOT_EVENTS.TOOLBOX_USAGE, onToolBoxUsage);
+        window.addEventListener(COPILOT_EVENTS.TOOLBOX_PARAMETERS, onToolBoxParameters);
+        window.addEventListener(COPILOT_EVENTS.TOOLBOX_DOWNSTREAMNODES, onToolBoxDownstreamNodes);
+
+        return () => {
+            window.removeEventListener(COPILOT_EVENTS.TOOLBOX_USAGE, onToolBoxUsage);
+            window.removeEventListener(COPILOT_EVENTS.TOOLBOX_PARAMETERS, onToolBoxParameters);
+            window.removeEventListener(COPILOT_EVENTS.TOOLBOX_DOWNSTREAMNODES, onToolBoxDownstreamNodes);
         }
     }, []);
     
@@ -543,6 +590,47 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
             abortControllerRef.current = null;
         }
     };
+
+    const onUsage = () => {
+        handleSendMessageWithContent(`Reply in ${navigator.language} language: How does the ${selectedNode?.[0]?.type} node work? I need its official usage guide.`)
+    }
+
+    const onParameters = () => {
+        handleSendMessageWithContent(`Reply in ${navigator.language} language: Show me the technical specifications for the ${selectedNode?.[0].type} node's inputs and outputs.`)
+    }
+
+    const getDownstreamSubgraphExt = () => {
+        const nodeTypeSet = new Set<string>();
+        
+        function findUpstreamNodes(node: any, depth: number) {
+            if (!node || depth >= 1) return;
+            
+            if (node.inputs) {
+                for (const input of Object.values(node.inputs)) {
+                    const linkId = (input as any).link;
+                    if (linkId && app.graph.links[linkId]) {
+                        const originId = app.graph.links[linkId].origin_id;
+                        const originNode = app.graph._nodes_by_id[originId];
+                        if (originNode) {
+                            nodeTypeSet.add(originNode.type);
+                            findUpstreamNodes(originNode, depth + 1);
+                        }
+                    }
+                }
+            }
+        }
+    
+        if (!!selectedNode[0]) {
+            findUpstreamNodes(selectedNode[0], 0);
+            return [{"type": "upstream_node_types", "data": Array.from(nodeTypeSet)}];
+        }
+    
+        return null;
+    }
+
+    const onDownstreamNodes = () => {
+        handleSendMessageWithIntent('downstream_subgraph_search', getDownstreamSubgraphExt())
+    }
 
     // Utility function to update localStorage cache for messages
     const updateMessagesCache = (messages: Message[]) => {

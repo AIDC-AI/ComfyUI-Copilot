@@ -1,0 +1,11 @@
+{
+  "Copilot_Toolbox_Usage": {
+    "label": "Usage"
+  },
+  "Copilot_Toolbox_Parameters": {
+    "label": "Parameters"
+  },
+  "Copilot_Toolbox_DownstreamNodes": {
+    "label": "Downstream Nodes"
+  }
+}
