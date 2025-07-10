@@ -775,11 +775,11 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                 )}
                 
                 {/* Tab content - Both tabs are mounted but only the active one is displayed */}
-                <div 
-                    className='flex-1 p-4'
+                {/* <div 
+                    className='flex-1 overflow-y-auto p-4 scroll-smooth h-0'
                     style={{ display: activeTab === 'chat' ? 'block' : 'none' }}
-                    // ref={messageDivRef}
-                >
+                    ref={messageDivRef}
+                > */}
                     <MessageList 
                         messages={messages}
                         latestInput={latestInput}
@@ -787,8 +787,9 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                         installedNodes={installedNodes}
                         onAddMessage={handleAddMessage}
                         loading={loading}
+                        isActive={activeTab === 'chat'}
                     />
-                </div>
+                {/* </div> */}
 
                 <div 
                     className="border-t px-4 py-3 border-gray-200 bg-white sticky bottom-0"

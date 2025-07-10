@@ -25,6 +25,7 @@ backup
 *.ntvs*
 *.njsproj
 *.sln
+*.db
 *.sw?
 .cache
 # dev

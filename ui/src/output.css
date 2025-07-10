@@ -789,10 +789,6 @@
     --tw-border-opacity: 1;
     border-color: rgb(219 234 254 / var(--tw-border-opacity, 1));
   }
-  .border-blue-200 {
-    --tw-border-opacity: 1;
-    border-color: rgb(191 219 254 / var(--tw-border-opacity, 1));
-  }
   .border-blue-300 {
     --tw-border-opacity: 1;
     border-color: rgb(147 197 253 / var(--tw-border-opacity, 1));
@@ -1172,10 +1168,6 @@
   .text-blue-800 {
     --tw-text-opacity: 1;
     color: rgb(30 64 175 / var(--tw-text-opacity, 1));
-  }
-  .text-blue-900 {
-    --tw-text-opacity: 1;
-    color: rgb(30 58 138 / var(--tw-text-opacity, 1));
   }
   .text-gray-300 {
     color: color-mix(in srgb, var(--p-text-color) 30%, transparent);

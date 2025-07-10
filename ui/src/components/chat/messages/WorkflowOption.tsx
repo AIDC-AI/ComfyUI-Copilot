@@ -8,7 +8,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeExternalLinks from 'rehype-external-links';
 import { generateUUID } from "../../../utils/uuid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tooltip } from 'antd';
 interface WorkflowOptionProps {
     content: string;
@@ -17,6 +17,7 @@ interface WorkflowOptionProps {
     latestInput: string;
     installedNodes: any[];
     onAddMessage?: (message: any) => void;
+    onFinishLoad?: () => void
 }
 
 interface NodeInfo {
@@ -25,11 +26,15 @@ interface NodeInfo {
     [key: string]: any;
 }
 
-export function WorkflowOption({ content, name = 'Assistant', avatar, latestInput, installedNodes, onAddMessage }: WorkflowOptionProps) {
+export function WorkflowOption({ content, name = 'Assistant', avatar, latestInput, installedNodes, onAddMessage, onFinishLoad }: WorkflowOptionProps) {
     const response = JSON.parse(content) as ChatResponse;
     const workflows = response.ext?.find(item => item.type === 'workflow')?.data || [];
     const [loadingWorkflows, setLoadingWorkflows] = useState<Record<string, boolean>>({});
     
+    useEffect(() => {
+        onFinishLoad?.()
+    }, [])
+
     const handleAcceptWorkflow = async (workflow: Workflow) => {
         if (!workflow.id) {
             console.error('No workflow id provided');

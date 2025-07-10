@@ -3,7 +3,7 @@
 
 import { app } from "../../../utils/comfyapp";
 import { BaseMessage } from './BaseMessage';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChatResponse, Node } from "../../../types/types";
 import { addNodeOnGraph } from "../../../utils/graphUtils";
 import { WorkflowChatAPI } from "../../../apis/workflowChatApi";
@@ -13,9 +13,10 @@ interface NodeSearchProps {
     name?: string;
     avatar: string;
     installedNodes: any[];
+    onFinishLoad?: () => void;
 }
 
-export function NodeSearch({ content, name = 'Assistant', avatar, installedNodes }: NodeSearchProps) {
+export function NodeSearch({ content, name = 'Assistant', avatar, installedNodes, onFinishLoad }: NodeSearchProps) {
     const response = JSON.parse(content) as ChatResponse;
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredNodeData, setHoveredNodeData] = useState<Node | null>(null);
@@ -29,6 +30,10 @@ export function NodeSearch({ content, name = 'Assistant', avatar, installedNodes
     const installedNodesList = nodes.filter(node => isNodeInstalled(node.name));
     const uninstalledNodesList = nodes.filter(node => !isNodeInstalled(node.name));
 
+    useEffect(() => {
+        onFinishLoad?.()
+    }, [])
+    
     // 添加一个格式化数字的辅助函数
     const formatNumber = (num: number) => {
         if (num >= 10000) {

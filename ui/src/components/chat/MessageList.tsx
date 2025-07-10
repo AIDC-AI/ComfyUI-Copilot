@@ -44,6 +44,7 @@ interface MessageListProps {
     installedNodes: any[];
     onAddMessage: (message: Message) => void;
     loading?: boolean;
+    isActive?: boolean;
 }
 
 const getAvatar = (name?: string) => {
@@ -61,14 +62,20 @@ const LazyNodeInstallGuide = lazy(() => import('./messages/NodeInstallGuide').th
 // 默认显示3轮回答，也就是找到列表最后的3条role是ai的数据
 const DEFAULT_COUNT = 3;
 
-export function MessageList({ messages, latestInput, onOptionClick, installedNodes, onAddMessage, loading }: MessageListProps) {
+export function MessageList({ messages, latestInput, onOptionClick, installedNodes, onAddMessage, loading, isActive }: MessageListProps) {
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [currentMessages, setCurrentMessages] = useState<FinallyMessageProps[]>([])
 
-    const parentRef = useRef<HTMLDivElement>(null)
+    const scrollRef = useRef<HTMLDivElement>(null)
     const lastMessagesCount = useRef<number>(0)
     const currentScrollHeight = useRef<number>(0) 
     const isLoadHistory = useRef<boolean>(false)
+
+    const onFinishLoad = () => {
+        if (!!scrollRef?.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }
 
     // 渲染对应的消息组件
     const renderMessage = (message: Message) => {
@@ -118,6 +125,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                                 latestInput={latestInput}
                                 installedNodes={installedNodes}
                                 onAddMessage={onAddMessage}
+                                onFinishLoad={onFinishLoad}
                             />
                         </Suspense>
                     );
@@ -129,6 +137,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                                 name={message.name}
                                 avatar={avatar}
                                 installedNodes={installedNodes}
+                                onFinishLoad={onFinishLoad}
                             />
                         </Suspense>
                     );
@@ -140,6 +149,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                                 name={message.name}
                                 avatar={avatar}
                                 onAddMessage={onAddMessage}
+                                onFinishLoad={onFinishLoad}
                             />
                         </Suspense>
                     );
@@ -303,6 +313,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                                         onAddMessage?.(successMessage);
                                     }
                                 }}
+                                onFinishLoad={onFinishLoad}
                             />
                         </Suspense>
                     );
@@ -364,7 +375,10 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
 
     const renderLoadMore = (message: LoadMoreButtonProps) => {
         const isNotUsed = message?.buttonStatus === LoadMoreStatus.NOT_USED
-        return <div className='flex justify-center items-center'>
+        return <div 
+            key={message.id}
+            className='flex justify-center items-center'
+        >
             {
                 isNotUsed ? <button 
                     className='w-full h-[24px] text-gray-700 text-xs bg-gray-50 hover:!bg-gray-200 px-2 py-1 rounded-md'
@@ -401,7 +415,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
             let count = 0;
             let endIndex = messages?.length
             for (let i = messages?.length - 1; i >= 0; i--) {
-                if (messages[i].role === 'ai') {
+                if (messages[i].role === 'ai' || i === 0) {
                     if (count > DEFAULT_COUNT + currentIndex) {
                         list.unshift({
                             id: `${messages[i].id}_loadmore`,
@@ -411,19 +425,17 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                         break;
                     } else {
                         count++;    
-                        if (endIndex < messages.length) {
-                            if (list?.length > 0) {
-                                list.unshift({
-                                    id: `${messages[i].id}_loadmore`,
-                                    buttonType: 'loadmore',
-                                    buttonStatus: LoadMoreStatus.USED
-                                })
-                            }
-                            list = [
-                                ...messages?.slice(Math.min(endIndex, i + 1), endIndex + 1), 
-                                ...list
-                            ];
+                        if (list?.length > 0) {
+                            list.unshift({
+                                id: `${messages[i].id}_loadmore`,
+                                buttonType: 'loadmore',
+                                buttonStatus: LoadMoreStatus.USED
+                            })
                         }
+                        list = [
+                            ...messages?.slice(Math.min(endIndex, i === 0 ? i : i + 1), endIndex + 1), 
+                            ...list
+                        ];
                         endIndex = i;
                     }
                 }
@@ -434,34 +446,28 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
     }, [messages, currentIndex])
 
     useLayoutEffect(() => {
-        if (parentRef?.current) {
+        if (!!scrollRef?.current) {
             if (isLoadHistory.current) {
                 // 加载历史数据需要修改scrolltop保证当前视图不变
-                parentRef.current.scrollTop = parentRef.current.scrollHeight - currentScrollHeight.current
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight - currentScrollHeight.current
                 isLoadHistory.current = false
             } else {
-                parentRef.current.scrollTop = parentRef.current.scrollHeight
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight
             }
-            currentScrollHeight.current = parentRef.current.scrollHeight
+            currentScrollHeight.current = scrollRef.current.scrollHeight
         }
     }, [currentMessages])
 
     return (
         <div 
-            className='overflow-y-auto w-full h-full'
-            ref={parentRef} 
+            className='flex-1 flex-col overflow-y-auto p-4 h-0'
+            ref={scrollRef} 
             style={{
-                contain: "strict"
+                display: isActive ? 'block' : 'none',
             }}
         >
             {
-                currentMessages?.map((message) => <div
-                    key={message.id}
-                >
-                    {
-                        !!message && (isLoadMoreButtonProps(message) ? renderLoadMore(message as LoadMoreButtonProps) : renderMessage(message as Message))
-                    }
-                </div>)
+                currentMessages?.map((message) => !!message && (isLoadMoreButtonProps(message) ? renderLoadMore(message as LoadMoreButtonProps) : renderMessage(message as Message)))
             }
             {loading && <LoadingMessage />}
         </div>

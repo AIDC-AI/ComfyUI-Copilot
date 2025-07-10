@@ -3,7 +3,7 @@
 
 import { app } from "../../../utils/comfyapp";
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatResponse, Node, Subgraph } from "../../../types/types";
+import { ChatResponse, Message, Node, Subgraph } from "../../../types/types";
 import { Network } from 'vis-network';
 import { WorkflowChatAPI } from "../../../apis/workflowChatApi";
 import { generateUUID } from "../../../utils/uuid";
@@ -15,9 +15,10 @@ interface DownstreamSubgraphsProps {
     name?: string;
     avatar: string;
     onAddMessage?: (message: Message) => void;
+    onFinishLoad?: () => void;
 }
 
-export function DownstreamSubgraphs({ content, name = 'Assistant', avatar, onAddMessage }: DownstreamSubgraphsProps) {
+export function DownstreamSubgraphs({ content, name = 'Assistant', avatar, onAddMessage, onFinishLoad }: DownstreamSubgraphsProps) {
     const { state, dispatch } = useChatContext();
     const { selectedNode, installedNodes } = state;
     const response = JSON.parse(content) as ChatResponse;
@@ -25,6 +26,10 @@ export function DownstreamSubgraphs({ content, name = 'Assistant', avatar, onAdd
     const networkRef = useRef<Network | null>(null);
 
     const nodes = response.ext?.find(item => item.type === 'downstream_subgraph_search')?.data || [];
+
+    useEffect(() => {
+        onFinishLoad?.()
+    }, [])
 
     // 将 Subgraph 转换为 vis.js 格式的函数
     const convertToVisFormat = (subgraph: Subgraph) => {
