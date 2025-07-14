@@ -10,6 +10,7 @@ import { generateUUID } from "../../utils/uuid";
 import { app } from "../../utils/comfyapp";
 import { addNodeOnGraph } from "../../utils/graphUtils";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import QuestionTitleMessage from "./messages/QuestionTitleMessage";
 
 // Define types for ext items to avoid implicit any
 interface ExtItem {
@@ -88,6 +89,10 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                 content={message.content} 
                 trace_id={message.trace_id} 
             />;
+        }
+
+        if (message.role === 'question_title') {
+            return <QuestionTitleMessage />
         }
 
         if (message.role === 'ai' || message.role === 'tool') {

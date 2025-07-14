@@ -75,7 +75,7 @@ export function AIMessage({ content, name = 'Assistant', avatar, format, onOptio
           rehypeKatex
         ]}
         remarkPlugins={[remarkGfm, remarkMath]}
-        className={`prose prose-xs prose-neutral prose-a:text-accent-foreground/50 break-words [&>*]:!my-1 leading-relaxed text-xs text-gray-800
+        className={`prose prose-xs prose-neutral prose-a:text-accent-foreground/50 break-words [&>*]:!my-1 leading-relaxed text-xs text-gray-700
                   prose-headings:font-semibold
                   prose-h1:text-base
                   prose-h2:text-sm
@@ -265,7 +265,7 @@ export function AIMessage({ content, name = 'Assistant', avatar, format, onOptio
               {guides.map((guide: string, index: number) => (
                 <button
                   key={index}
-                  className="px-3 py-1.5 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-[12px] w-[calc(50%-0.25rem)]"
+                  className="px-3 py-1.5 text-gray-700 rounded-md hover:!bg-gray-50 transition-colors text-[12px] w-[calc(50%-0.25rem)]"
                   onClick={() => onOptionClick?.(guide)}
                 >
                   {guide}

@@ -25,7 +25,7 @@ export function UserMessage({ content, trace_id }: UserMessageProps) {
 
     return (
         <BaseMessage name="User" isUser={true}>
-            <div className="w-full rounded-lg border border-gray-700 py-4 px-4 text-gray-700 text-sm break-words relative">
+            <div className="w-full rounded-lg border border-gray-700 p-4 text-gray-700 text-sm break-words relative">
                 <p className="whitespace-pre-wrap leading-snug">{content}</p>
                 {trace_id && (
                     <div 
@@ -34,7 +34,7 @@ export function UserMessage({ content, trace_id }: UserMessageProps) {
                         onMouseLeave={() => setShowTooltip(false)}
                         onClick={handleCopyTraceId}
                     >
-                        <InformationCircleIcon className="h-3.5 w-3.5 text-gray-500 hover:text-gray-700" />
+                        <InformationCircleIcon className="h-3.5 w-3.5 text-gray-500 hover:!text-gray-700" />
                         
                         {/* Tooltip */}
                         {showTooltip && (

@@ -152,10 +152,10 @@ const TabButton = ({
 }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-2 font-medium text-xs transition-colors duration-200 ${
+        className={`px-4 py-2 font-medium text-xs transition-colors duration-200 border-b-2 ${
             active 
-                ? "text-blue-600 border-b-2 border-blue-600" 
-                : "text-gray-600 hover:text-blue-500 hover:border-b-2 hover:border-blue-300"
+                ? "text-[#71A3F2] border-[#71A3F2]" 
+                : "text-gray-600 border-transparent hover:!text-[#71A3F2] hover:!border-[#71A3F2]"
         }`}
     >
         {children}
@@ -164,7 +164,7 @@ const TabButton = ({
 
 export default function WorkflowChat({ onClose, visible = true, triggerUsage = false, onUsageTriggered }: WorkflowChatProps) {
     const { state, dispatch } = useChatContext();
-    const { messages, installedNodes, loading, sessionId, selectedNode, activeTab } = state;
+    const { messages, installedNodes, loading, sessionId, selectedNode, activeTab, guiding } = state;
     const messageDivRef = useRef<HTMLDivElement>(null);
     const [input, setInput] = useState<string>('');
     const [latestInput, setLatestInput] = useState<string>('');
@@ -219,11 +219,26 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
         fetchInstalledNodes();
     }, [activeTab]);
 
+    const showGuide = () => {
+        dispatch({ type: 'SET_GUIDING', payload: true });
+        dispatch({ type: 'SET_MESSAGES', payload: [
+            {
+                id: generateUUID(),
+                role: 'question_title',
+                content: ''
+            }
+        ]})
+    }
+
     // 获取历史消息
     const fetchMessages = async (sid: string) => {
         try {
             const data = await WorkflowChatAPI.fetchMessages(sid);
-            dispatch({ type: 'SET_MESSAGES', payload: data });
+            if (data?.length > 0) {
+                dispatch({ type: 'SET_MESSAGES', payload: data });
+            } else {
+                showGuide()
+            }
             // Note: The localStorage cache is already updated in the fetchMessages API function
         } catch (error) {
             console.error('Error fetching messages:', error);
@@ -337,6 +352,10 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
     }
 
     const handleSendMessage = async () => {
+        if (guiding) {
+            dispatch({ type: 'SET_GUIDING', payload: false });
+            dispatch({ type: 'CLEAR_MESSAGES' });
+        }
         dispatch({ type: 'SET_LOADING', payload: true });
         if ((input.trim() === "" && !selectedNode) || !sessionId) return;
         setLatestInput(input);
@@ -502,6 +521,9 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
         const newSessionId = generateUUID();
         dispatch({ type: 'SET_SESSION_ID', payload: newSessionId });
         localStorage.setItem("sessionId", newSessionId);
+        setTimeout(() => {
+            showGuide()
+        }, 500)
     };
 
     const avatar = (name?: string) => {
@@ -795,14 +817,14 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                     className="border-t px-4 py-3 border-gray-200 bg-white sticky bottom-0"
                     style={{ display: activeTab === 'chat' ? 'block' : 'none' }}
                 >
-                    {selectedNode && (
+                    {/* {selectedNode && (
                         <SelectedNodeInfo 
                             nodeInfo={selectedNode}
                             onSendWithIntent={handleSendMessageWithIntent}
                             loading={loading}
                             onSendWithContent={handleSendMessageWithContent}
                         />
-                    )}
+                    )} */}
 
                     <ChatInput 
                         input={input}
