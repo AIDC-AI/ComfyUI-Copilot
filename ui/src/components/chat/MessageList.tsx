@@ -386,7 +386,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
         >
             {
                 isNotUsed ? <button 
-                    className='w-full h-[24px] text-gray-700 text-xs bg-gray-50 hover:!bg-gray-200 px-2 py-1 rounded-md'
+                    className='w-full h-[24px] text-gray-700 text-xs bg-transparent hover:!bg-gray-100 px-2 py-1 rounded-md'
                     onClick={handleLoadMore}
                 >
                     Load more
