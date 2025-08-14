@@ -29,6 +29,6 @@
 
 .cc-icon-logo:before {
   content: "\e900";
-  /* color: #9b9d9f; */
-  /* font-size: var(--sidebar-icon-size) !important; */
+  color: #9b9d9f;
+  font-size: 0.8rem !important;
 }
