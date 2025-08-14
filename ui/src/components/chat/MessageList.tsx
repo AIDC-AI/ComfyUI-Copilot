@@ -837,7 +837,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                 // 用户提问或者是debug或者是showcase算一个回合，3个回合就显示loadmore按钮
                 if (processedMessages[i].role === 'user' || processedMessages[i].role === 'showcase' || processedMessages[i].format === 'debug_guide') {
                     count++;
-                    if (count >= DEFAULT_COUNT + currentIndex) {
+                    if (count >= DEFAULT_COUNT + currentIndex && i > 0) {
                         showLoadMoreButton.current = true
                         break;
                     }
