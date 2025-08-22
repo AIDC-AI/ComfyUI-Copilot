@@ -447,7 +447,7 @@ export namespace WorkflowChatAPI {
         console.log('Using cached messages from localStorage');
         return JSON.parse(cachedMessages) as Message[];
       }
-      return [];
+      // No cache available; fall back to server request
       const apiKey = getApiKey();
       const browserLanguage = getBrowserLanguage();
       const { openaiApiKey, openaiBaseUrl, rsaPublicKey } = getOpenAiConfig();
