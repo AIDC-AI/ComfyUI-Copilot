@@ -132,11 +132,17 @@ async def invoke_chat(request):
     set_language(language)
     
     # 构建配置信息
+    openai_api_key = request.headers.get('Openai-Api-Key')
+    openai_base_url = request.headers.get('Openai-Base-Url')
+    
+    log.info(f"Request headers - Openai-Api-Key: {'***' if openai_api_key else 'None'}")
+    log.info(f"Request headers - Openai-Base-Url: {openai_base_url}")
+    
     config = {
         "session_id": session_id,
         "workflow_checkpoint_id": workflow_checkpoint_id,
-        "openai_api_key": request.headers.get('Openai-Api-Key'),
-        "openai_base_url": request.headers.get('Openai-Base-Url'),
+        "openai_api_key": openai_api_key,
+        "openai_base_url": openai_base_url,
         "model_select": next((x['data'][0] for x in ext if x['type'] == 'model_select' and x.get('data')), None)
     }
     

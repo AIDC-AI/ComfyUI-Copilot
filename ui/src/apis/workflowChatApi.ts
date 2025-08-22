@@ -240,11 +240,16 @@ export namespace WorkflowChatAPI {
       };
       
       // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
+      if ((openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) || openaiBaseUrl) {
         try {
           headers['Openai-Base-Url'] = openaiBaseUrl;
+          if (openaiApiKey && openaiApiKey.trim() !== '') {
+            headers['Openai-Api-Key'] = openaiApiKey;
+          } else {
+            headers['Openai-Api-Key'] = '';
+          }
         } catch (error) {
-          console.error('Error encrypting OpenAI API key:', error);
+          console.error('Error setting OpenAI headers:', error);
         }
       }
       
@@ -264,7 +269,10 @@ export namespace WorkflowChatAPI {
       if(intent && intent !== '') {
         chatUrl = `${BASE_URL}/api/chat/invoke`
       } else {
-        headers['Openai-Api-Key'] = openaiApiKey;
+        // Only set API key header if not already set above
+        if (!headers['Openai-Api-Key']) {
+          headers['Openai-Api-Key'] = openaiApiKey || '';
+        }
       }
       const response = await fetch(chatUrl, {
         method: 'POST',

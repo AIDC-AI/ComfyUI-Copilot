@@ -17,7 +17,7 @@ from typing import Dict, Any
 
 from ..agent_factory import create_agent
 from ..utils.globals import CLAUDE_4_MODEL_NAME, get_language
-from ..utils.request_context import get_session_id
+from ..utils.request_context import get_session_id, get_config
 
 from ..service.workflow_rewrite_tools import *
 
@@ -58,10 +58,12 @@ def create_workflow_rewrite_agent():
     
     language = get_language()
     session_id = get_session_id() or "unknown_session"
+    config = get_config() or {}
     
     return create_agent(
         name="Workflow Rewrite Agent",
         model=CLAUDE_4_MODEL_NAME,
+        config=config,
         handoff_description="""
         我是工作流改写代理，专门负责根据用户需求修改和优化当前画布上的ComfyUI工作流。
         """,

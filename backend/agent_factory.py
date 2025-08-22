@@ -15,7 +15,7 @@ import os
 
 from agents._config import set_default_openai_api
 from agents.tracing import set_tracing_disabled
-# from .utils.logger import log
+from .utils.logger import log
 
 # def load_env_config():
 #     """Load environment variables from .env.llm file"""
@@ -37,6 +37,8 @@ set_tracing_disabled(True)
 def create_agent(**kwargs) -> Agent:
     # 通过用户配置拿/环境变量
     config = kwargs.pop("config") if "config" in kwargs else {}
+    log.info(f"Agent Factory - Received config: {config}")
+    
     # 避免将 None 写入 headers
     session_id = (config or {}).get("session_id")
     default_headers = {}
@@ -53,11 +55,17 @@ def create_agent(**kwargs) -> Agent:
         if config.get("openai_api_key") and config.get("openai_api_key") != "":
             api_key = config.get("openai_api_key")
     
+    log.info(f"Agent Factory - Using base_url: {base_url}")
+    log.info(f"Agent Factory - Using api_key: {'***' if api_key else 'None'}")
+    
     # Check if this is LMStudio and adjust API key handling
     is_lmstudio = is_lmstudio_url(base_url)
+    log.info(f"Agent Factory - Is LMStudio: {is_lmstudio}")
+    
     if is_lmstudio and not api_key:
         # LMStudio typically doesn't require an API key, use a placeholder
         api_key = "lmstudio-local"
+        log.info("Agent Factory - Set LMStudio placeholder API key")
 
     client = AsyncOpenAI(
         api_key=api_key,
@@ -67,6 +75,7 @@ def create_agent(**kwargs) -> Agent:
 
     default_model_name = os.environ.get("OPENAI_MODEL", "gemini-2.5-flash")
     model_name = kwargs.pop("model") or default_model_name
+    log.info(f"Agent Factory - Using model: {model_name}")
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
     
     return Agent(model=model, **kwargs)
