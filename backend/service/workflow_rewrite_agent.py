@@ -45,9 +45,13 @@ def create_workflow_rewrite_agent():
     session_id = get_session_id() or "unknown_session"
     config = get_config() or {}
     
+    # Use user's selected model if available, otherwise fall back to WORKFLOW_MODEL_NAME
+    selected_model = config.get('model_select') if config else None
+    model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
+    
     return create_agent(
         name="Workflow Rewrite Agent",
-        model=WORKFLOW_MODEL_NAME,
+        model=model_to_use,
         config=config,
         handoff_description="""
         我是工作流改写代理，专门负责根据用户需求修改和优化当前画布上的ComfyUI工作流。
