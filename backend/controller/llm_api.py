@@ -12,7 +12,7 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 import json
 from typing import List, Dict, Any
 from aiohttp import web
-from ..utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, is_lmstudio_url
+from ..utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, is_lmstudio_url, set_last_openai_base_url
 import server
 import requests
 from ..utils.logger import log
@@ -57,6 +57,8 @@ async def list_models(request):
                     "name": model['id'],
                     "image_enable": True
                 })
+            # Remember a working base URL for later chat calls
+            set_last_openai_base_url(openai_base_url)
         else:
             # Surface error info to logs to help users diagnose (e.g., 401)
             log.error(f"Model list request failed: HTTP {response.status_code} - {response.text}")

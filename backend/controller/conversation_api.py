@@ -134,6 +134,24 @@ async def invoke_chat(request):
     # 构建配置信息
     openai_api_key = request.headers.get('Openai-Api-Key')
     openai_base_url = request.headers.get('Openai-Base-Url')
+
+    # If base URL header missing, fall back to last successful one (e.g., LMStudio) or default LMStudio
+    if not openai_base_url:
+        from ..utils.globals import get_last_openai_base_url, LMSTUDIO_DEFAULT_BASE_URL
+        remembered = get_last_openai_base_url()
+        if remembered:
+            openai_base_url = remembered
+            log.info(f"Using remembered base URL for chat: {openai_base_url}")
+        else:
+            openai_base_url = LMSTUDIO_DEFAULT_BASE_URL
+            log.info(f"No base URL provided; defaulting to LMStudio: {openai_base_url}")
+
+    # If neither API key nor base URL is provided, assume local LMStudio by default
+    # This enables out-of-the-box local usage without requiring a cloud key
+    if not openai_api_key and not openai_base_url:
+        from ..utils.globals import LMSTUDIO_DEFAULT_BASE_URL
+        openai_base_url = LMSTUDIO_DEFAULT_BASE_URL
+        log.info(f"No OpenAI credentials provided; defaulting base URL to LMStudio: {openai_base_url}")
     
     log.info(f"Request headers - Openai-Api-Key: {'***' if openai_api_key else 'None'}")
     log.info(f"Request headers - Openai-Base-Url: {openai_base_url}")
