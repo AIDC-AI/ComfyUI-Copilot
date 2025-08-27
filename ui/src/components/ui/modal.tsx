@@ -41,7 +41,7 @@ const Modal: React.FC<ModalProps> = ({
         onClick={e => e.stopPropagation()} // 阻止冒泡，点击内容区不关闭
       >
         <button
-          className="absolute top-2 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 right-4 bg-transparent border-none text-gray-400 hover:text-gray-600"
           onClick={onClose}
           aria-label="Close"
         >

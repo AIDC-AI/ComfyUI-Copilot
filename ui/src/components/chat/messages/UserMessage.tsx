@@ -16,9 +16,10 @@ interface UserMessageProps {
     content: string;
     trace_id?: string;
     ext?: ExtItem[];
+    finished?: boolean;
 }
 
-export function UserMessage({ content, trace_id, ext }: UserMessageProps) {
+export function UserMessage({ content, trace_id, ext, finished }: UserMessageProps) {
     const [showTooltip, setShowTooltip] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -36,7 +37,9 @@ export function UserMessage({ content, trace_id, ext }: UserMessageProps) {
     // Check if there's a checkpoint in ext data for workflow_update or param_update
     // let checkpointId: number | null = null;
     // let images: any[] = [];
-    
+    useEffect(() => {
+        console.log(`[UserMessage] checkpointId:`, checkpointId);
+    }, [checkpointId])
     useEffect(() => {
         // 添加调试日志
         console.log(`[UserMessage] Received ext data:`, ext);
@@ -64,7 +67,7 @@ export function UserMessage({ content, trace_id, ext }: UserMessageProps) {
             // If we have workflow/param updates but no checkpoint, we could show a message about it
             // But for now, we only show restore button if we have a checkpoint
         }
-    }, [ext])
+    }, [ext, finished])
 
     return (
         <BaseMessage name="User" isUser={true}>

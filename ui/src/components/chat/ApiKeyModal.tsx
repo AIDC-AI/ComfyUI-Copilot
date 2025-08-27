@@ -172,14 +172,15 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         const previousOpenaiBaseUrl = localStorage.getItem('openaiBaseUrl') || 'https://api.openai.com/v1';
         const hasOpenaiConfigChanged = openaiApiKey.trim() !== previousOpenaiApiKey || openaiBaseUrl !== previousOpenaiBaseUrl;
         
-        // Save or clear OpenAI configuration in localStorage
+        // Always persist base URL (needed for LMStudio which may not require API key)
+        localStorage.setItem('openaiBaseUrl', openaiBaseUrl);
+
+        // Save or clear OpenAI API key in localStorage
         if (openaiApiKey.trim()) {
             localStorage.setItem('openaiApiKey', openaiApiKey);
-            localStorage.setItem('openaiBaseUrl', openaiBaseUrl);
         } else {
-            // If the OpenAI API key is empty, remove it from localStorage
+            // If the OpenAI API key is empty, remove only the key and keep base URL
             localStorage.removeItem('openaiApiKey');
-            localStorage.removeItem('openaiBaseUrl');
         }
         
         // Call configuration updated callback if OpenAI config has changed

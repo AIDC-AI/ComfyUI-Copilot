@@ -81,8 +81,10 @@ We now cover the entire workflow lifecycle, including generation, debugging, rew
 
 - 3. 💎 **Unsatisfied with Previous Workflow Results?**: Tell us what you're not satisfied with, and let us help you modify the workflow, add nodes, modify parameters, and optimize workflow structure.
   - Type in the input box: Help me add xxx to the current canvas.
-  - Note: If the model is new after May 2025, such as wan2.2, it may cause the LLM to fail to understand and the process to interrupt.
+  - Note: If the model is new after May 2025, such as wan2.2, it may cause the LLM to fail to understand and the process to interrupt. You can try adding expert experience to help the LLM better generate workflows.
+  - The workflow rewrite is difficult, and it carries a lot of context, so you need to control the context length, otherwise it is easy to interrupt. It is recommended to often click the Clear Context button in the upper right corner to control the conversation length.
 <img src="assets/改写.gif"/>
+<img src="assets/expert_add.jpg"/>
 
 - 4. 💎 **Parameter Tuning Too Painful?**: We provide parameter tuning tools. You can set parameter ranges, and the system will automatically batch execute different parameter combinations and generate visual comparison results to help you quickly find the optimal parameter configuration.
   - Switch to the GenLab tab and follow the guidance. Note that the workflow must be able to run normally at this time to batch generate and evaluate parameters.

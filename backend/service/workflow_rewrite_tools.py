@@ -6,10 +6,11 @@ from typing import Dict, Any, Optional
 
 from agents import RunContextWrapper
 from agents.tool import function_tool
+from .workflow_rewrite_agent_simple import rewrite_workflow_simple
 
 from ..dao.workflow_table import get_workflow_data, save_workflow_data, get_workflow_data_ui, get_workflow_data_by_id
 from ..utils.comfy_gateway import get_object_info
-from ..utils.request_context import get_session_id
+from ..utils.request_context import get_rewrite_context, get_session_id
 from ..utils.logger import log
 
 def get_workflow_data_from_config(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -58,7 +59,10 @@ def get_current_workflow() -> str:
     workflow_data = get_workflow_data(session_id)
     if not workflow_data:
         return json.dumps({"error": "No workflow data found for this session"})
-    return json.dumps(workflow_data)
+    
+    workflow_data_str = json.dumps(workflow_data, ensure_ascii=False)
+    get_rewrite_context().current_workflow = workflow_data_str
+    return workflow_data_str
 
 @function_tool
 async def get_node_info(node_class: str) -> str:
@@ -66,7 +70,9 @@ async def get_node_info(node_class: str) -> str:
     try:
         object_info = await get_object_info()
         if node_class in object_info:
-            return json.dumps(object_info[node_class])
+            node_info_str = json.dumps(object_info[node_class], ensure_ascii=False)
+            get_rewrite_context().node_infos[node_class] = node_info_str
+            return node_info_str
         else:
             # 搜索类似的节点类
             similar_nodes = [k for k in object_info.keys() if node_class.lower() in k.lower()]
@@ -140,10 +146,10 @@ def update_workflow(workflow_data: str = "") -> str:
             return json.dumps({"error": "No session_id found in context"})
         
         if not workflow_data or not isinstance(workflow_data, str) or not workflow_data.strip():
-            return json.dumps({
-                "error": "Missing required argument: workflow_data",
-                "hint": "Pass the full workflow JSON as a string."
-            })
+            rewrite_context = get_rewrite_context()
+            log.info(f"[update_workflow] workflow_data: {workflow_data}, trigger simple rewrite, context: {rewrite_context}")
+            workflow_data = rewrite_workflow_simple(rewrite_context)
+            
         
         log.info(f"[update_workflow] workflow_data: {workflow_data}")
         # 在修改前保存checkpoint

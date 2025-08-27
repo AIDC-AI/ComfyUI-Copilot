@@ -1,8 +1,8 @@
 '''
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-08-08 17:14:52
-LastEditors: ai-business-hql qingli.hql@alibaba-inc.com
-LastEditTime: 2025-08-15 18:43:06
+LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
+LastEditTime: 2025-08-25 17:41:14
 FilePath: /comfyui_copilot/backend/utils/globals.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -91,10 +91,12 @@ def set_comfyui_copilot_api_key(api_key: str) -> None:
     _global_state.set('comfyui_copilot_api_key', api_key)
 
 
-LLM_DEFAULT_BASE_URL = "https://comfyui-copilot-server.onrender.com/v1"
-# LLM_DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
+BACKEND_BASE_URL = "https://comfyui-copilot-server.onrender.com"
 LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1"
-CLAUDE_4_MODEL_NAME = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+WORKFLOW_MODEL_NAME = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+# WORKFLOW_MODEL_NAME = "gpt-5-2025-08-07-GlobalStandard"
+LLM_DEFAULT_BASE_URL = BACKEND_BASE_URL + "/v1"
+
 
 def is_lmstudio_url(base_url: str) -> bool:
     """Check if the base URL is likely LMStudio based on common patterns."""

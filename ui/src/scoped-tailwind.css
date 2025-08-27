@@ -1,5 +1,6 @@
 #comfyui-copilot-plugin,
-#comfyui-copilot-modal {
+#comfyui-copilot-modal,
+#comfyui-copilot-rewrite-expert-modal {
   @tailwind base;
   @tailwind components;
   @tailwind utilities;
@@ -201,3 +202,5 @@
 .loading-spin {
   animation: rotate 1s linear infinite;
 }
+
+.search-input input::placeholder { color: #888; }

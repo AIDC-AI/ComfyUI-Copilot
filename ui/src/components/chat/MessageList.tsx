@@ -87,7 +87,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
             const message = processedMessages[i];
             
             // 检查AI消息是否包含checkpoint信息
-            if ((message.role === 'ai' || message.role === 'tool') && message.content) {
+            if ((message.role === 'ai' || message.role === 'tool') && message.content && message.finished) {
                 try {
                     const response = JSON.parse(message.content);
                     if (response.ext) {
@@ -235,13 +235,14 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
     // 渲染对应的消息组件
     const renderMessage = (message: Message, index: number) => {
         // 移除频繁的日志输出
-        // console.log('[MessageList] Rendering message:', message);
+        console.log('[MessageList] Rendering message:', message);
         if (message.role === 'user') {
             return <Suspense key={message.id} fallback={<div>Loading...</div>}>
                 <LazyUserMessage 
                     content={message.content} 
                     trace_id={message.trace_id}
                     ext={message.ext}
+                    finished={message.finished}
                 />
             </Suspense>
         }
@@ -782,45 +783,50 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
         let list: Message[] = []
         // 新增消息
         if (lastMessagesCount.current > 0 && lastMessagesCount.current < processedMessages.length) {
-            list = processedMessages?.slice(lastMessagesCount.current)
-            
-            // 对新增的消息立即进行checkpoint关联检查
-            for (let i = list.length - 1; i >= 0; i--) {
-                const message = list[i];
-                if ((message.role === 'ai' || message.role === 'tool') && message.content && message.finished) {
-                    try {
-                        const response = JSON.parse(message.content);
-                        if (response.ext) {
-                            const checkpointExt = response.ext.find((item: any) => 
-                                item.type === 'workflow_rewrite_checkpoint' || 
-                                (item.type === 'debug_checkpoint' && item.data?.checkpoint_type === 'workflow_rewrite_start')
-                            );
-                            
-                            if (checkpointExt) {
-                                console.log(`[MessageList] Real-time checkpoint processing for finished message:`, checkpointExt);
-                                // 查找对应的用户消息并关联checkpoint
-                                setCurrentMessages(prev => {
-                                    const updated = [...prev];
-                                    for (let j = updated.length - 1; j >= 0; j--) {
-                                        if (updated[j].role === 'user' && !updated[j].ext?.some(ext => ext.type === 'workflow_rewrite_checkpoint')) {
-                                            const existingExt = updated[j].ext || [];
-                                            updated[j] = {
-                                                ...updated[j],
-                                                ext: [...existingExt, checkpointExt]
-                                            };
-                                            console.log(`[MessageList] Real-time associated checkpoint to user message:`, updated[j]);
-                                            break;
-                                        }
-                                    }
-                                    return updated;
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        // 忽略错误
-                    }
-                }
+            // 上一条是用户提问，需要一起取出来重设ext字段
+            if (processedMessages?.[lastMessagesCount.current - 1]?.role === 'user') {
+                list = processedMessages?.slice(lastMessagesCount.current - 1)
+            } else {
+                list = processedMessages?.slice(lastMessagesCount.current)
             }
+            
+            // // 对新增的消息立即进行checkpoint关联检查
+            // for (let i = list.length - 1; i >= 0; i--) {
+            //     const message = list[i];
+            //     if ((message.role === 'ai' || message.role === 'tool') && message.content && message.finished) {
+            //         try {
+            //             const response = JSON.parse(message.content);
+            //             if (response.ext) {
+            //                 const checkpointExt = response.ext.find((item: any) => 
+            //                     item.type === 'workflow_rewrite_checkpoint' || 
+            //                     (item.type === 'debug_checkpoint' && item.data?.checkpoint_type === 'workflow_rewrite_start')
+            //                 );
+                            
+            //                 if (checkpointExt) {
+            //                     console.log(`[MessageList] Real-time checkpoint processing for finished message:`, checkpointExt);
+            //                     // 查找对应的用户消息并关联checkpoint
+            //                     setCurrentMessages(prev => {
+            //                         const updated = [...prev];
+            //                         for (let j = updated.length - 1; j >= 0; j--) {
+            //                             if (updated[j].role === 'user' && !updated[j].ext?.some(ext => ext.type === 'workflow_rewrite_checkpoint')) {
+            //                                 const existingExt = updated[j].ext || [];
+            //                                 updated[j] = {
+            //                                     ...updated[j],
+            //                                     ext: [...existingExt, checkpointExt]
+            //                                 };
+            //                                 console.log(`[MessageList] Real-time associated checkpoint to user message:`, updated[j]);
+            //                                 break;
+            //                             }
+            //                         }
+            //                         return updated;
+            //                     });
+            //                 }
+            //             }
+            //         } catch (error) {
+            //             // 忽略错误
+            //         }
+            //     }
+            // }
             
             setCurrentMessages(prev => mergeByKeyCombine(prev, list, 'id'));
             // 回答结束，更新lastMessagesCount
@@ -837,7 +843,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                 // 用户提问或者是debug或者是showcase算一个回合，3个回合就显示loadmore按钮
                 if (processedMessages[i].role === 'user' || processedMessages[i].role === 'showcase' || processedMessages[i].format === 'debug_guide') {
                     count++;
-                    if (count >= DEFAULT_COUNT + currentIndex) {
+                    if (i > 0 && count >= DEFAULT_COUNT + currentIndex) {
                         showLoadMoreButton.current = true
                         break;
                     }

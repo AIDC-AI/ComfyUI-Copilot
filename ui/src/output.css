@@ -1,5 +1,6 @@
 #comfyui-copilot-plugin,
-#comfyui-copilot-modal {
+#comfyui-copilot-modal,
+#comfyui-copilot-rewrite-expert-modal {
   *, ::before, ::after {
     --tw-border-spacing-x: 0;
     --tw-border-spacing-y: 0;
@@ -424,6 +425,9 @@
   .h-2 {
     height: 0.5rem;
   }
+  .h-2\/3 {
+    height: 66.666667%;
+  }
   .h-20 {
     height: 5rem;
   }
@@ -507,6 +511,9 @@
   }
   .w-1\/2 {
     width: 50%;
+  }
+  .w-1\/4 {
+    width: 25%;
   }
   .w-12 {
     width: 3rem;
@@ -1251,6 +1258,10 @@
     --tw-text-opacity: 1;
     color: rgb(113 163 242 / var(--tw-text-opacity, 1));
   }
+  .text-\[\#888\] {
+    --tw-text-opacity: 1;
+    color: rgb(136 136 136 / var(--tw-text-opacity, 1));
+  }
   .text-\[\#fff\] {
     --tw-text-opacity: 1;
     color: rgb(255 255 255 / var(--tw-text-opacity, 1));
@@ -1652,6 +1663,14 @@
 
 .loading-spin {
   animation: rotate 1s linear infinite;
+}
+
+.search-input input::-moz-placeholder {
+  color: #888;
+}
+
+.search-input input::placeholder {
+  color: #888;
 }
 
 .hover\:\!overflow-visible:hover {

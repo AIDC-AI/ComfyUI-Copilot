@@ -9,6 +9,7 @@ import { generateUUID } from '../../utils/uuid';
 import { Portal } from './Portal';
 import ImageLoading from '../ui/Image-Loading';
 import { useChatContext } from '../../context/ChatContext';
+import RewriteExpertModal from './RewriteExpertModal';
 
 // Debug icon component
 const DebugIcon = ({ className }: { className: string }) => (
@@ -17,6 +18,14 @@ const DebugIcon = ({ className }: { className: string }) => (
     </svg>
 );
 
+const ExpertIcon = ({ className }: { className: string }) => (
+    <svg className={className} viewBox="0 0 1024 1024" fill="currentColor">
+        <path d="M512.82 958.87c-25.38 0-49.1-12-63.45-32.21l-20.95-29.43a8 8 0 0 0-6.41-2.79l-319.1 1.72C46.17 896.16 0 852 0 797.7V165.3c0-54.3 46.17-98.45 102.91-98.45l256.13-1.72c50 0 97.12 18.21 132.6 51.28A182.32 182.32 0 0 1 512.9 140a184.56 184.56 0 0 1 21.06-23.31c35.55-33.21 82.65-51.51 132.63-51.51h254.7c56.74 0 102.91 44.17 102.91 98.46V796c0 54.29-46.17 98.45-102.91 98.45H603.63a8 8 0 0 0-6.42 2.79l-20.94 29.43c-14.35 20.16-38.07 32.2-63.45 32.2z m-409.91-822c-18.15 0-32.91 12.76-32.91 28.45V797.7c0 15.69 14.76 28.46 32.91 28.46l319.1-1.72c25.38 0 49.1 12 63.45 32.2l20.94 29.44c1.84 2.58 5.38 2.79 6.42 2.79s4.57-0.21 6.41-2.79l21-29.44c14.35-20.16 38.06-32.2 63.45-32.2h317.61c18.15 0 32.91-12.76 32.91-28.45v-632.4c0-15.69-14.76-28.46-32.91-28.46h-254.7c-65.49 0-118.77 48.76-118.77 108.68v461a35 35 0 1 1-70 0v-461c0-28.76-12-55.82-33.9-76.19-22.48-21-52.62-32.49-84.88-32.49z">
+        </path>
+        <path d="M362.52 330.46H197.37a35 35 0 0 1 0-70h165.15a35 35 0 0 1 0 70zM298.32 482.71h-101a35 35 0 0 1 0-70h101a35 35 0 0 1 0 70zM828.16 330.46H663.02a35 35 0 0 1 0-70h165.14a35 35 0 0 1 0 70zM828.16 482.71H727.21a35 35 0 0 1 0-70h100.95a35 35 0 0 1 0 70z">
+        </path>
+    </svg>
+);
 interface ChatInputProps {
     input: string;
     loading: boolean;
@@ -63,6 +72,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
     const { state, dispatch } = useChatContext();
     const { messages } = state;
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showRewriteExpertModal, setShowRewriteExpertModal] = useState(false);
     const [models, setModels] = useState<{
         label: ReactNode; name: string; image_enable: boolean 
 }[]>([]);
@@ -238,7 +248,16 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                 </div>
             )}
 
-            <div className="w-full flex flex-row justify-end p-1">
+            <div className="w-full flex flex-row justify-end p-1 gap-2">
+                <button
+                    type="button"
+                    onClick={() => setShowRewriteExpertModal(true)}
+                    className="rounded-md bg-white border-none 
+                                hover:!bg-gray-100
+                                transition-all duration-200 active:scale-95"
+                    title="Debug workflow">
+                    <ExpertIcon className="h-5 w-5" />
+                </button>
                 <button
                     type="button"
                     onClick={handleDebugClick}
@@ -332,7 +351,9 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                 title="Debug workflow">
                 <DebugIcon className="h-5 w-5" />
             </button> */}
-
+            {
+                showRewriteExpertModal && <RewriteExpertModal onClose={() => setShowRewriteExpertModal(false)} />
+            }
             {/* 上传图片模态框 */}
             {showUploadModal && (
                 <Portal>

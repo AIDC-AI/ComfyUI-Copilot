@@ -1,12 +1,12 @@
 '''
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-31 19:38:08
-LastEditors: ai-business-hql qingli.hql@alibaba-inc.com
-LastEditTime: 2025-08-14 06:14:22
+LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
+LastEditTime: 2025-08-25 21:23:10
 FilePath: /comfyui_copilot/backend/agent_factory.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from agents import Agent, OpenAIChatCompletionsModel
+from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
 from dotenv import dotenv_values
 from .utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, get_comfyui_copilot_api_key, is_lmstudio_url
 from openai import AsyncOpenAI
@@ -77,5 +77,7 @@ def create_agent(**kwargs) -> Agent:
     model_name = kwargs.pop("model") or default_model_name
     log.info(f"Agent Factory - Using model: {model_name}")
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
-    
+
+    if config.get("max_tokens"):
+        return Agent(model=model, model_settings=ModelSettings(max_tokens=config.get("max_tokens") or 8192), **kwargs)
     return Agent(model=model, **kwargs)

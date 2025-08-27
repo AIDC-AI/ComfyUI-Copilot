@@ -18,5 +18,7 @@ export {
     Settings as CogIcon,
     StopCircle as StopIcon,
     History as HistoryIcon,
-    MessageCircleWarning as WarningIcon
+    MessageCircleWarning as WarningIcon,
+    CirclePlus as CirclePlusIcon,
+    FilePenLine as FilePenLineIcon
 } from 'lucide-react'; 
