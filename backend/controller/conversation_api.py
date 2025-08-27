@@ -171,6 +171,25 @@ async def invoke_chat(request):
     # 不再需要创建用户消息存储到后端，前端负责消息存储
 
     try:
+        # Validate API key presence unless using LMStudio/local base URL
+        from ..utils.globals import is_lmstudio_url
+        if not openai_api_key and not (openai_base_url and is_lmstudio_url(openai_base_url)):
+            warning_msg = (
+                "No OpenAI API key provided. Please click the gear icon (⚙️) to configure your key, "
+                "or set a local LMStudio base URL in settings."
+            )
+            log.error(warning_msg)
+            chat_response = ChatResponse(
+                session_id=session_id,
+                text=warning_msg,
+                finished=True,
+                type="message",
+                format="text",
+                ext=None
+            )
+            await response.write(json.dumps(chat_response).encode() + b"\n")
+            await response.write_eof()
+            return response
         # Call the MCP client to get streaming response with historical messages and image support
         # Pass OpenAI-formatted messages and processed images to comfyui_agent_invoke
         accumulated_text = ""

@@ -49,10 +49,13 @@ def create_workflow_rewrite_agent():
     selected_model = config.get('model_select') if config else None
     model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
     
+    # Merge max_tokens into config
+    agent_config = {**config, "max_tokens": 8192} if config else {"max_tokens": 8192}
+    
     return create_agent(
         name="Workflow Rewrite Agent",
         model=model_to_use,
-        config=config,
+        config=agent_config,
         handoff_description="""
         我是工作流改写代理，专门负责根据用户需求修改和优化当前画布上的ComfyUI工作流。
         """,
@@ -110,10 +113,7 @@ def create_workflow_rewrite_agent():
 
         始终以用户的实际需求为导向，提供专业、准确、高效的工作流改写服务。
         """,
-        tools=[get_rewrite_expert_by_name, get_current_workflow, get_node_info, update_workflow, remove_node],
-        config={
-            "max_tokens": 8192
-        }
+        tools=[get_rewrite_expert_by_name, get_current_workflow, get_node_info, update_workflow, remove_node]
     )
 
 # 注意：工作流改写代理现在需要在有session context的环境中创建

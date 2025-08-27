@@ -57,6 +57,9 @@ async def list_models(request):
                     "name": model['id'],
                     "image_enable": True
                 })
+        else:
+            # Surface error info to logs to help users diagnose (e.g., 401)
+            log.error(f"Model list request failed: HTTP {response.status_code} - {response.text}")
         
         return web.json_response({
                 "models": llm_config
