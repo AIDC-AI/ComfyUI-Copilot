@@ -74,10 +74,10 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 <img src="assets/debug.gif"/>
   - 如果识别出来工作流缺失了模型，会自动提示您下载模型。
 <div align="center">
-<img src="assets/Debug模型下载.png" width="50%"/>
+<img src="assets/Debug模型下载.jpg" width="50%"/>
 </div>
   - 您也可以直接点击下方的模型下载按钮，输入模型关键词，从推荐的模型里选择所需模型。
-<img src="assets/模型下载.gif"/>
+<img src="assets/模型下载.jpg"/>
 
 - 3. 💎 **之前的工作流生图效果不满意？**：提出您不满意的地方，让我们帮您修改工作流，增加节点，修改参数，优化工作流结构。
   - 在输入框输入：帮我在当前的画布上添加一个xxxx。
