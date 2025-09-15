@@ -6,6 +6,7 @@ import rehypeExternalLinks from 'rehype-external-links';
 import { useMemo, useState } from "react";
 import { ChatResponse } from "../../types/types";
 import { WorkflowChatAPI } from "../../apis/workflowChatApi";
+import { LazyLoadImage } from 'react-lazy-load-image-component';
 
 interface IProps {
   response: ChatResponse;
@@ -123,10 +124,10 @@ const Markdown = ({ response, specialClass }: IProps) => {
             isGif = srcStrs[0]?.endsWith('.gif') || srcStrs[0]?.endsWith('.webp');
           }
           return (<div className={`${isGif ? '' : 'w-1/2'} mx-auto`}>
-            <img
+            <LazyLoadImage 
               {...props}
-              loading="eager"
-              className="w-full h-auto" 
+              effect="opacity"
+              className="w-full h-auto"
               onError={(e) => {
                 console.warn('Image failed to load:', props.src, 'Error:', e);
                 e.currentTarget.style.opacity = '0';

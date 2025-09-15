@@ -9,8 +9,37 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 # Copyright (C) 2025 AIDC-AI
 # Licensed under the MIT License.
 
-import asyncio
+import sys
 import os
+
+# Ensure 'agents' resolves to openai-agents (not legacy RL package)
+try:
+    import importlib.metadata as _im
+    from pathlib import Path as _Path
+
+    try:
+        _dist = _im.distribution("openai-agents")
+    except _im.PackageNotFoundError:
+        _dist = None
+
+    if _dist and _dist.files:
+        _init_rel = next((f for f in _dist.files if str(f).replace("\\", "/").endswith("agents/__init__.py")), None)
+        if _init_rel:
+            _init_path = _dist.locate_file(_init_rel)
+            _agents_parent = _Path(_init_path).parent.parent
+            _pp = str(_agents_parent)
+            if _pp not in sys.path:
+                sys.path.insert(0, _pp)
+
+            # If an incompatible 'agents' was already imported, drop it
+            m = sys.modules.get("agents")
+            if m is not None and not hasattr(m, "Agent"):
+                sys.modules.pop("agents", None)
+except Exception:
+    # Fail-open: never block plugin loading if aliasing fails
+    pass
+
+import asyncio
 import server
 from aiohttp import web
 import folder_paths

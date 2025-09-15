@@ -4,6 +4,7 @@ import { createContext, useContext, useReducer, Dispatch, useRef, useEffect, use
 import { Message } from '../types/types';
 import { app } from '../utils/comfyapp';
 import { ConfigProvider } from 'antd';
+import useDarkMode from '../hooks/useDarkTheme';
 
 // Add tab type definition
 export type TabType = 'chat' | 'parameter-debug';
@@ -107,7 +108,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [modelDownloadMap, setModelDownloadMap] = useState<Record<string, DownloadProgress>>({});
   const currentDownloadingId = useRef<string[]>([]);
 
-  const isDark = app.extensionManager.setting.get('Comfy.ColorPalette') === 'dark';
+  // const isDark = app.extensionManager.setting.get('Comfy.ColorPalette') === 'dark';
 
   const getProgress = async (id: string) => {
     const response = await fetch(`/api/download-progress/${id}`)
@@ -115,6 +116,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return res.data || null
   }
 
+  const isDark = useDarkMode()
+  
   // 轮询下载进度
   const modelDownloadPolling = async () => {
     if (currentDownloadingId?.current?.length > 0) {
@@ -171,6 +174,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(`messages_${state.sessionId}`, JSON.stringify(state.messages));
     }
   }, [state.messages, state.sessionId]);
+
+  useEffect(() => {
+    console.log('--->', app.extensionManager.setting.get('Comfy.ColorPalette'))
+  }, [app.extensionManager.setting.get('Comfy.ColorPalette')])
 
   return (
     <ConfigProvider
