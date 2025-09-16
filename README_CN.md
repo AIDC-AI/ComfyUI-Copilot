@@ -32,18 +32,6 @@
 </div>
 
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-VP73E20C46"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-VP73E20C46');
-</script>
-
-
-
 https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 
 
