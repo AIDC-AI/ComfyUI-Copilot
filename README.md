@@ -35,14 +35,14 @@
 </div>
 
 
-<!-- Google Analytics (GA4) - Replace G-XXXXXXXXXX with your Measurement ID. Note: GitHub strips scripts in README rendering on github.com; this works on GitHub Pages or external sites. -->
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-VP73E20C46"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);} 
+  function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+
   gtag('config', 'G-VP73E20C46');
-  
 </script>
 
 
