@@ -31,7 +31,7 @@ try:
             if _pp not in sys.path:
                 sys.path.insert(0, _pp)
 
-            # If an incompatible 'agents' was already imported, drop it
+            # If an incompatible 'agents' was already imported, drop it so the correct one can load
             m = sys.modules.get("agents")
             if m is not None and not hasattr(m, "Agent"):
                 sys.modules.pop("agents", None)

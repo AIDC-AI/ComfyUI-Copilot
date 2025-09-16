@@ -13,14 +13,25 @@ import os
 import traceback
 from typing import List, Dict, Any, Optional
 
-from agents._config import set_default_openai_api
-from agents.agent import Agent
-from agents.items import ItemHelpers
-from agents.mcp import MCPServerSse
-from agents.run import Runner
-from agents.tracing import set_tracing_disabled
-from agents import handoff, RunContextWrapper
-from agents.extensions import handoff_filters
+try:
+    from agents._config import set_default_openai_api
+    from agents.agent import Agent
+    from agents.items import ItemHelpers
+    from agents.mcp import MCPServerSse
+    from agents.run import Runner
+    from agents.tracing import set_tracing_disabled
+    from agents import handoff, RunContextWrapper
+    from agents.extensions import handoff_filters
+    if not hasattr(__import__('agents'), 'Agent'):
+        raise ImportError
+except Exception:
+    raise ImportError(
+        "Detected incorrect or missing 'agents' package while loading MCP components. "
+        "Please install 'openai-agents' and ensure this plugin prefers it. Commands:\n"
+        "  python -m pip uninstall -y agents gym tensorflow\n"
+        "  python -m pip install -U openai-agents\n\n"
+        "Or set COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 to prefer openai-agents without uninstalling."
+    )
 
 from ..agent_factory import create_agent
 from ..service.workflow_rewrite_agent import create_workflow_rewrite_agent

@@ -6,12 +6,25 @@ LastEditTime: 2025-09-03 11:00:57
 FilePath: /comfyui_copilot/backend/agent_factory.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
+import os
+try:
+    from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
+    if not hasattr(__import__('agents'), 'Agent'):
+        raise ImportError
+except Exception:
+    # Give actionable guidance without crashing obscurely
+    raise ImportError(
+        "Detected incorrect or missing 'agents' package. "
+        "Please uninstall legacy RL 'agents' (and tensorflow/gym if pulled transitively) and install openai-agents. "
+        "Commands:\n"
+        "  python -m pip uninstall -y agents gym tensorflow\n"
+        "  python -m pip install -U openai-agents\n\n"
+        "Alternatively, keep both by setting COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 so this plugin prefers openai-agents."
+    )
 from dotenv import dotenv_values
 from .utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, get_comfyui_copilot_api_key, is_lmstudio_url
 from openai import AsyncOpenAI
 
-import os
 
 from agents._config import set_default_openai_api
 from agents.tracing import set_tracing_disabled
