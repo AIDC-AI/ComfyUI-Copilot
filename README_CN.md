@@ -32,14 +32,14 @@
 </div>
 
 
-<!-- Google Analytics (GA4) - 将 G-XXXXXXXXXX 替换为你的 Measurement ID。注意：GitHub 会在 github.com 的 README 渲染中移除脚本；该代码可在 GitHub Pages 或外部站点生效。-->
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-VP73E20C46"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);} 
+  function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+
   gtag('config', 'G-VP73E20C46');
-  
 </script>
 
 
