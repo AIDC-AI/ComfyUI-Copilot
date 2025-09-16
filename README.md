@@ -91,10 +91,10 @@ We now cover the entire workflow lifecycle, including generation, debugging, rew
 <img src="assets/debug.gif"/>
   - If a missing model is identified, it will automatically prompt you to download the model.
 <div align="center">
-<img src="assets/Debug模型下载.png" width="50%"/>
+<img src="assets/Debug模型下载.jpg" width="50%"/>
 </div>
   - You can also directly click the Model Download button below, enter the model keyword, and select the required model from the recommended models.
-<img src="assets/模型下载.gif"/>
+<img src="assets/模型下载.jpg"/>
 
 - 3. 💎 **Unsatisfied with Previous Workflow Results?**: Tell us what you're not satisfied with, and let us help you modify the workflow, add nodes, modify parameters, and optimize workflow structure.
   - Type in the input box: Help me add xxx to the current canvas.
