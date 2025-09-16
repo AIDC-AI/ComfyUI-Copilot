@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XEMY4SEV43"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XEMY4SEV43');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI-Copilot - Your Intelligent Assistant for ComfyUI</title>
+    <meta name="description" content="ComfyUI-Copilot is an AIGC intelligent assistant built on ComfyUI that provides comprehensive support for workflow building, debugging, and optimization.">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="ComfyUI-Copilot - Your Intelligent Assistant for ComfyUI">
+    <meta property="og:description" content="Enhancing Image Generation Development with Smart Assistance">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aidc-ai.github.io/ComfyUI-Copilot/">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #5462eb;
+            --secondary-color: #f8fafc;
+            --accent-color: #10b981;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: slide 20s linear infinite;
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100px); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .badge:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Video Section */
+        .video-section {
+            padding: 4rem 0;
+            background: var(--secondary-color);
+            text-align: center;
+        }
+
+        .video-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 450px;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 5rem 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .feature-description {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        /* Update Section */
+        .update-section {
+            padding: 4rem 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .update-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .update-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .update-subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .update-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .update-feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Installation Section */
+        .installation {
+            padding: 5rem 0;
+            background: var(--secondary-color);
+        }
+
+        .installation-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .step-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -15px;
+            left: 2rem;
+            width: 30px;
+            height: 30px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .step-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            margin-top: 1rem;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .contact-methods {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .contact-method {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .contact-qr {
+            width: 120px;
+            height: 120px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Footer */
+        .footer {
+            background: #1e293b;
+            color: white;
+            padding: 3rem 0 2rem;
+            text-align: center;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1rem;
+            color: #f1f5f9;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #334155;
+            padding-top: 2rem;
+            color: #94a3b8;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+
+            .tagline {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .contact-methods {
+                gap: 2rem;
+            }
+
+            .contact-qr {
+                width: 100px;
+                height: 100px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-on-scroll {
+            opacity: 0;
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .animate-on-scroll.visible {
+            animation-play-state: running;
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">🎯 ComfyUI-Copilot</h1>
+                <p class="tagline">Your Intelligent Assistant for ComfyUI</p>
+                
+                <div class="badges">
+                    <a href="#" class="badge">
+                        <i class="fas fa-tag"></i> Version 2.0.0
+                    </a>
+                    <a href="https://github.com/AIDC-AI/ComfyUI-Copilot" class="badge">
+                        <i class="fab fa-github"></i> GitHub
+                    </a>
+                    <a href="https://discord.gg/7H9dMCvuMp" class="badge">
+                        <i class="fab fa-discord"></i> Discord
+                    </a>
+                    <a href="https://aclanthology.org/2025.acl-demo.61.pdf" class="badge">
+                        <i class="fas fa-file-pdf"></i> ACL2025 Paper
+                    </a>
+                </div>
+
+                <div class="cta-buttons">
+                    <a href="#installation" class="btn btn-primary">
+                        <i class="fas fa-download"></i>
+                        Get Started
+                    </a>
+                    <a href="https://github.com/AIDC-AI/ComfyUI-Copilot" class="btn btn-secondary">
+                        <i class="fab fa-github"></i>
+                        View on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Video Section -->
+    <section class="video-section">
+        <div class="container">
+            <h2 class="section-title">See ComfyUI-Copilot in Action</h2>
+            <div class="video-container">
+                <div class="video-placeholder">
+                    <i class="fas fa-play-circle" style="font-size: 4rem; opacity: 0.5;"></i>
+                    <div style="margin-left: 1rem;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">Demo Video</div>
+                        <div>Watch how ComfyUI-Copilot enhances your workflow</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Major Update Section -->
+    <section class="update-section">
+        <div class="container">
+            <div class="update-content">
+                <h2 class="update-title">🎉 Major Update v2.0</h2>
+                <p class="update-subtitle">Evolving into a Workflow Development Coworker</p>
+                <p>ComfyUI-Copilot v2.0 evolves from a "helper tool" into a "development partner"—not just assisting with workflow development, but capable of autonomously completing development tasks.</p>
+                
+                <div class="update-features">
+                    <div class="update-feature">
+                        <h3>🔧 One-Click Debug</h3>
+                        <p>Automatically detects errors in your workflow, precisely identifies issues, and provides repair suggestions.</p>
+                    </div>
+                    <div class="update-feature">
+                        <h3>🔄 Workflow Rewriting</h3>
+                        <p>Optimizes the current workflow based on your description, such as adjusting parameters, adding nodes, and improving logic.</p>
+                    </div>
+                    <div class="update-feature">
+                        <h3>🚀 Enhanced Generation</h3>
+                        <p>Understands your requirements more accurately and generates tailored workflows, lowering the barrier to entry for beginners.</p>
+                    </div>
+                    <div class="update-feature">
+                        <h3>🧠 Upgraded Architecture</h3>
+                        <p>Now aware of your local ComfyUI environment, Copilot delivers optimized, personalized solutions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">🔥 Core Features</h2>
+            <p class="section-subtitle">Comprehensive support for your ComfyUI workflow development</p>
+            
+            <div class="features-grid">
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Generate First Version Workflow</h3>
+                    <p class="feature-description">
+                        Based on your text description, we provide workflows that meet your needs, returning 3 high-quality workflows from our library and 1 AI-generated workflow. You can import them into ComfyUI with one click to start generating images.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Simply type "I want a workflow for xxx."
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Workflow Debug</h3>
+                    <p class="feature-description">
+                        Automatically analyze errors in workflows, help you fix parameter errors and workflow connection errors, and provide optimization suggestions. Includes automatic model download suggestions.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Click the Debug button in the upper right corner of the input box.
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Workflow Rewriting</h3>
+                    <p class="feature-description">
+                        Tell us what you're not satisfied with, and let us help you modify the workflow, add nodes, modify parameters, and optimize workflow structure.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Type "Help me add xxx to the current canvas."
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Parameter Tuning</h3>
+                    <p class="feature-description">
+                        Set parameter ranges, and the system will automatically batch execute different parameter combinations and generate visual comparison results to help you find the optimal configuration.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Switch to the GenLab tab and follow the guidance.
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Node Recommendations</h3>
+                    <p class="feature-description">
+                        Based on your description, recommend nodes you might need and provide recommendation reasons.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Type "I want a node for xxx."
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Node Query System</h3>
+                    <p class="feature-description">
+                        Select a node on the canvas, click the node query button to explore the node in depth, view its description, parameter definitions, usage tips, and downstream workflow recommendations.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Type "What's the usage, input and output of node xxx."
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Model Recommendations</h3>
+                    <p class="feature-description">
+                        Based on your text requirements, Copilot helps you find base models and LoRA models that suit your needs.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Type "I want a Lora that generates xxx images."
+                    </div>
+                </div>
+
+                <div class="feature-card animate-on-scroll">
+                    <div class="feature-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <h3 class="feature-title">💎 Downstream Node Recommendations</h3>
+                    <p class="feature-description">
+                        After you select a node on the canvas, based on the existing nodes on your canvas, recommend downstream subgraphs you might need.
+                    </p>
+                    <div class="feature-demo">
+                        <strong>Usage:</strong> Select a node and get intelligent recommendations.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section class="installation" id="installation">
+        <div class="container">
+            <h2 class="section-title">🚀 Getting Started</h2>
+            <p class="section-subtitle">Easy installation in just a few steps</p>
+            
+            <div class="installation-steps">
+                <div class="step-card animate-on-scroll">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Clone Repository</h3>
+                    <p>Clone ComfyUI-Copilot in the ComfyUI custom_nodes directory:</p>
+                    <div class="code-block">cd ComfyUI/custom_nodes<br>git clone https://github.com/AIDC-AI/ComfyUI-Copilot</div>
+                </div>
+
+                <div class="step-card animate-on-scroll">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Install Dependencies</h3>
+                    <p>Install the required dependencies:</p>
+                    <div class="code-block">cd ComfyUI/custom_nodes/ComfyUI-Copilot<br>pip install -r requirements.txt</div>
+                    <p><strong>For Windows users:</strong></p>
+                    <div class="code-block">python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Copilot\requirements.txt</div>
+                </div>
+
+                <div class="step-card animate-on-scroll">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Activate Copilot</h3>
+                    <p>After running ComfyUI, find the Copilot activation button on the left side of the panel to launch its service.</p>
+                </div>
+
+                <div class="step-card animate-on-scroll">
+                    <div class="step-number">4</div>
+                    <h3 class="step-title">Generate API Key</h3>
+                    <p>Click the * button, enter your email address, and the API Key will be automatically sent to your email address. Paste it into the input box and click save to activate Copilot.</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 3rem;">
+                <div class="step-card" style="display: inline-block; max-width: 600px;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+                        <i class="fas fa-store"></i> Alternative: ComfyUI Manager
+                    </h3>
+                    <p>Open ComfyUI Manager, click on Custom Nodes Manager, search for ComfyUI-Copilot, and click the install button. Remember to update to the latest version.</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                        <strong>Note:</strong> The Manager requires permissions. Run ComfyUI with "sudo python main.py" to prevent errors.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">📞 Contact Us</h2>
+            <p class="section-subtitle">For any queries or suggestions, feel free to reach out!</p>
+            
+            <div style="margin: 2rem 0;">
+                <p><strong>Email:</strong> ComfyUI-Copilot@service.alibaba.com</p>
+            </div>
+
+            <div class="contact-methods">
+                <div class="contact-method">
+                    <img src="assets/qrcode.png" alt="WeChat QR Code" class="contact-qr">
+                    <h3>WeChat</h3>
+                </div>
+                <div class="contact-method">
+                    <img src="assets/discordqrcode.png" alt="Discord QR Code" class="contact-qr">
+                    <h3>Discord</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>ComfyUI-Copilot</h3>
+                    <p>Your Intelligent Assistant for ComfyUI - Enhancing Image Generation Development with Smart Assistance</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#installation">Installation</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="https://github.com/AIDC-AI/ComfyUI-Copilot">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Community</h3>
+                    <ul class="footer-links">
+                        <li><a href="https://discord.gg/7H9dMCvuMp">Discord</a></li>
+                        <li><a href="https://x.com/Pixelle_AI">Twitter</a></li>
+                        <li><a href="https://aclanthology.org/2025.acl-demo.61.pdf">Research Paper</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Company</h3>
+                    <p>👾 <strong>Alibaba International Digital Commerce</strong> 👾</p>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 ComfyUI-Copilot. Licensed under the MIT License.</p>
+                <p>⭐ Star us on <a href="https://github.com/AIDC-AI/ComfyUI-Copilot" style="color: var(--accent-color);">GitHub</a> if you find this project useful!</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all elements with animation class
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Add stagger animation delay to feature cards
+        document.querySelectorAll('.feature-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+        });
+
+        // Add stagger animation delay to step cards
+        document.querySelectorAll('.step-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.15}s`;
+        });
+
+        // Copy code blocks on click
+        document.querySelectorAll('.code-block').forEach(block => {
+            block.style.cursor = 'pointer';
+            block.title = 'Click to copy';
+            
+            block.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(block.textContent);
+                    
+                    // Visual feedback
+                    const originalBg = block.style.background;
+                    block.style.background = 'var(--accent-color)';
+                    
+                    setTimeout(() => {
+                        block.style.background = originalBg;
+                    }, 200);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+            });
+        });
+
+        // Add loading animation to badges
+        document.querySelectorAll('.badge').forEach(badge => {
+            badge.addEventListener('mouseenter', () => {
+                badge.style.transform = 'translateY(-2px) scale(1.05)';
+            });
+            
+            badge.addEventListener('mouseleave', () => {
+                badge.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Parallax effect for header background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const header = document.querySelector('.header::before');
+            if (header) {
+                header.style.transform = `translateY(${scrolled * 0.5}px)`;
+            }
+        });
+    </script>
+</body>
+</html>
