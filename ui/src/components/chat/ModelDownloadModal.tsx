@@ -14,14 +14,14 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
   const { onClose } = props;
 
   const [loading, setLoading] = useState<boolean>(false)
-  const [modelSuggests, setModelSuggests] = useState<any[]>([])
+  const [modelList, setModelList] = useState<any[]>([])
   const ref = useRef<InputRef>(null)
 
   useEffect(() => {
     ref?.current?.focus()
-  }, [modelSuggests])
+  }, [modelList])
 
-  const getModelSuggests = async (keyword: string) => {
+  const getModelList = async (keyword: string) => {
     setLoading(true)
     try {
       WorkflowChatAPI.trackEvent({
@@ -29,9 +29,9 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
         message_type: 'model',
         data: { keyword }
       })
-      const response = await fetch(`/api/model-suggests?keyword=${keyword}`)
+      const response = await fetch(`/api/model-searchs?keyword=${keyword}`)
       const data = await response.json()
-      setModelSuggests(data?.data?.suggests || [])
+      setModelList(data?.data?.searchs || [])
     } catch (e) {
       console.log('e--->',e)
     } finally {
@@ -40,7 +40,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
   }
 
   const handleSearchModel = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    getModelSuggests(e.target.value)
+    getModelList(e.target.value)
   }
 
   return <div 
@@ -71,7 +71,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
           className="search-input w-1/4 bg-white text-[#888] placeholder-gray-500 border border-gray-300"
         />
       </div>
-      <ModelOption modelSuggests={modelSuggests} loading={loading} showTitle={false} />
+      <ModelOption modelList={modelList} loading={loading} showTitle={false} />
     </div>
   </div>
 }

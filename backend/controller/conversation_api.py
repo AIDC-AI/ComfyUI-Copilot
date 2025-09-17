@@ -992,12 +992,12 @@ async def clear_download_progress(request):
                 "message": f"Download ID {download_id} not found"
             })
 
-@server.PromptServer.instance.routes.get("/api/model-suggests")
+@server.PromptServer.instance.routes.get("/api/model-searchs")
 async def model_suggests(request):
     """
-    Get model suggest list by keyword
+    Get model search list by keyword
     """
-    log.info("Received model-suggests request")
+    log.info("Received model-search request")
     try:
         keyword = request.query.get('keyword')
 
@@ -1010,17 +1010,17 @@ async def model_suggests(request):
         # 创建ModelScope网关实例
         gateway = ModelScopeGateway()
 
-        suggests = gateway.suggest(name=keyword)
+        suggests = gateway.search(name=keyword)
 
         list = suggests["data"] if suggests.get("data") else []
 
         return web.json_response({
             "success": True,
             "data": {
-                "suggests": list,
+                "searchs": list,
                 "total": len(list)
             },
-            "message": f"Get suggests successfully"
+            "message": f"Get searchs successfully"
         })
         
     except ImportError as e:
@@ -1031,12 +1031,12 @@ async def model_suggests(request):
         })  
 
     except Exception as e:
-        log.error(f"Error get model suggests: {str(e)}")
+        log.error(f"Error get model searchs: {str(e)}")
         import traceback
         traceback.print_exc()
         return web.json_response({
             "success": False,
-            "message": f"Get model suggests failed: {str(e)}"
+            "message": f"Get model searchs failed: {str(e)}"
         })
         
 @server.PromptServer.instance.routes.get("/api/model-paths")

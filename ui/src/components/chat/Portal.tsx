@@ -24,7 +24,12 @@ export function Portal({ children, container = document.body, className = '' }: 
 
     // 创建一个包装器来应用样式
     const portalContent = (
-        <div className={`relative z-[1000] ${className}`}>
+        <div 
+            className={`fixed inset-0 ${className}`}
+            style={{
+                zIndex: 9999
+            }}
+        >
             {children}
         </div>
     );
