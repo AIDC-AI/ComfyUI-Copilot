@@ -52,7 +52,7 @@ class ModelScopeGateway:
         revision = data.get('Revision') or inner.get('Revision')
         # size = self.get_model_size(path, name, revision)
         return {
-            "ModelType": data.get("ModelType") or inner.get("ModelType"),
+            "Libraries": data.get("Libraries") or inner.get("Libraries"),
             "ChineseName": data.get("ChineseName") or inner.get("ChineseName"),
             "Id": data.get("Id") or inner.get("Id") or data.get("ModelId") or inner.get("ModelId"),
             "Name": data.get("Name") or inner.get("Name"),
@@ -127,8 +127,8 @@ class ModelScopeGateway:
                         "ChineseName": "中文名称",
                         "Id": 294066,
                         "Name": "SD3-Controlnet-Pose",
-                        "Path": "InstantX"
-                        "ModelType": ["qwen2],
+                        "Path": "InstantX",
+                        "Libraries": ["pytorch","lora","safetensors"],
                         "LastUpdatedTime": "1733042611",
                         "Downloads": 100,
                         "Size": 100000
@@ -190,8 +190,8 @@ class ModelScopeGateway:
                         "ChineseName": "中文名称",
                         "Id": 294066,
                         "Name": "SD3-Controlnet-Pose",
-                        "Path": "InstantX"
-                        "ModelType": ["qwen2],
+                        "Path": "InstantX",
+                        "Libraries": ["pytorch","lora","safetensors"],
                         "LastUpdatedTime": "1733042611",
                         "Downloads": 100,
                         "Size": 100000

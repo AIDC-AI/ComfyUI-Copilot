@@ -6,6 +6,7 @@ import LoadingIcon from "../../ui/LoadingIcon";
 import { Select, Table, type TableProps } from 'antd';
 import TableEmpty from "../../ui/TableEmpty";
 import { WorkflowChatAPI } from "../../../apis/workflowChatApi";
+import Tag from "../../ui/Tag";
 interface IProps {
   modelList: any[]
   loading?: boolean
@@ -22,7 +23,7 @@ type DataType = {
   ChineseName?: string
   LastUpdatedTime?: number
   Downloads?: number
-  ModelType?: string
+  Libraries?: string[]
   source_model_type?: string
   source_missing_model?: string
   source_keyword?: string
@@ -35,7 +36,7 @@ const TITLE_EN = 'Missing models detected. We recommend downloading the followin
 const TH_ZH = {
   name: '模型ID',
   dir: '模型下载存放目录',
-  type: '模型类型',
+  tags: '标签',
   updateTime: '更新时间',
   downloads: '下载量',
   action: '操作'
@@ -44,7 +45,7 @@ const TH_ZH = {
 const TH_EN = {
   name: 'Model ID',
   dir: 'Models download directory',
-  type: 'Model type',
+  tags: 'Tags',
   updateTime: 'Update time',
   downloads: 'Downloads',
   action: 'Action'
@@ -173,10 +174,10 @@ const ModelOption: React.FC<IProps> = (props) => {
       )
     },
     {
-      title: thMap.type,
-      key: 'type',
+      title: thMap.tags,
+      key: 'tags',
       render: (_, record) => (
-        <div>{(!!record?.ModelType && record?.ModelType?.length > 0) ? record.ModelType[0] : ''}</div>
+        <div className="flex flex-wrap gap-1">{record?.Libraries?.map((item: string) => <Tag content={item} />)}</div>
       )
     },
     {
