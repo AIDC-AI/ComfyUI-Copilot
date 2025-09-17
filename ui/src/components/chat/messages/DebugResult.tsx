@@ -123,7 +123,7 @@ export function DebugResult({ content, name = 'Assistant', avatar, format = 'mar
             </DebugCollapsibleCard> 
             {
                 modelSuggests?.length > 0 && (
-                    <ModelOption modelSuggests={modelSuggests} showPagination={false} />
+                    <ModelOption modelList={modelSuggests} showPagination={false} />
                 )
             }
             <div className="flex justify-end mt-2"> 
