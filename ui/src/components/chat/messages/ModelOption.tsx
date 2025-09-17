@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { app } from "../../../utils/comfyapp";
 import Modal from "../../ui/Modal";
 import { useChatContext } from "../../../context/ChatContext";
@@ -6,8 +6,9 @@ import LoadingIcon from "../../ui/LoadingIcon";
 import { Select, Table, type TableProps } from 'antd';
 import TableEmpty from "../../ui/TableEmpty";
 import { WorkflowChatAPI } from "../../../apis/workflowChatApi";
+import Tag from "../../ui/Tag";
 interface IProps {
-  modelSuggests: any[]
+  modelList: any[]
   loading?: boolean
   showTitle?: boolean
   showPagination?: boolean
@@ -20,6 +21,9 @@ type DataType = {
   Name: string
   Path: string
   ChineseName?: string
+  LastUpdatedTime?: number
+  Downloads?: number
+  Libraries?: string[]
   source_model_type?: string
   source_missing_model?: string
   source_keyword?: string
@@ -32,16 +36,23 @@ const TITLE_EN = 'Missing models detected. We recommend downloading the followin
 const TH_ZH = {
   name: '模型ID',
   dir: '模型下载存放目录',
+  tags: '标签',
+  updateTime: '更新时间',
+  downloads: '下载量',
   action: '操作'
 }
+
 const TH_EN = {
   name: 'Model ID',
   dir: 'Models download directory',
+  tags: 'Tags',
+  updateTime: 'Update time',
+  downloads: 'Downloads',
   action: 'Action'
 }
 
 const ModelOption: React.FC<IProps> = (props) => {
-  const { modelSuggests, loading = false, showTitle = true, showPagination = true } = props
+  const { modelList, loading = false, showTitle = true, showPagination = true } = props
   const { modelDownloadMap, addDownloadId } = useChatContext()
 
   const browserLanguage = app.extensionManager.setting.get('Comfy.Locale');
@@ -64,12 +75,12 @@ const ModelOption: React.FC<IProps> = (props) => {
     if (!modelPaths || modelPaths.length === 0) 
       return
     let selectedPaths: Record<number, string> = {}
-    modelSuggests?.forEach(item => { 
+    modelList?.forEach(item => { 
       const index = modelPaths.findIndex((path: string) => item.model_type === path)
       selectedPaths[item.Id] = modelPaths[index === -1 ? 0 : index] || ''
     })
     setSelectedPathMap(selectedPaths)
-  }, [modelSuggests, modelPaths])
+  }, [modelList, modelPaths])
 
   const handleDownload = async (id: number, modelId: string, modelType: string) => {
     WorkflowChatAPI.trackEvent({
@@ -163,6 +174,27 @@ const ModelOption: React.FC<IProps> = (props) => {
       )
     },
     {
+      title: thMap.tags,
+      key: 'tags',
+      render: (_, record) => (
+        <div className="flex flex-wrap gap-1">{record?.Libraries?.map((item: string) => <Tag content={item} />)}</div>
+      )
+    },
+    {
+      title: thMap.updateTime,
+      key: 'updateTime',
+      render: (_, record) => (
+        <div>{record.LastUpdatedTime ? new Date(record.LastUpdatedTime).toLocaleString() : ''}</div>
+      )
+    },
+    {
+      title: thMap.downloads,
+      key: 'downloads',
+      render: (_, record) => (
+        <div>{record.Downloads ? record.Downloads : 0}</div>
+      )
+    },
+    {
       title: thMap.action,
       key: 'action',
       render: (_, record) => (
@@ -182,7 +214,8 @@ const ModelOption: React.FC<IProps> = (props) => {
             </button>
           }
         </div>
-      )
+      ),
+      fixed: 'right'
     },
   ];
 
@@ -197,10 +230,10 @@ const ModelOption: React.FC<IProps> = (props) => {
     }
     <Table  
       id="comfyui-copilot-model-download"
-      bordered
+      // bordered
       loading={loading}
       columns={columns} 
-      dataSource={modelSuggests} 
+      dataSource={modelList} 
       pagination={showPagination ? undefined : false}
       rowClassName={"text-gray-800"}
       locale={{ emptyText: <TableEmpty /> }}

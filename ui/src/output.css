@@ -2,7 +2,7 @@
 #comfyui-copilot-image-upload-modal,
 #comfyui-copilot-rewrite-expert-modal,
 #comfyui-copilot-model-download-modal,
-#comfyui-copilot-model-download
+#comfyui-copilot-model-download,
 #comfyui-copilot-start-pop-view {
   *, ::before, ::after {
     --tw-border-spacing-x: 0;
@@ -160,6 +160,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .pointer-events-auto {
+    pointer-events: auto;
+  }
   .\!visible {
     visibility: visible !important;
   }
@@ -281,9 +284,6 @@
   .z-50 {
     z-index: 50;
   }
-  .z-\[1000\] {
-    z-index: 1000;
-  }
   .z-\[9999\] {
     z-index: 9999;
   }
@@ -393,6 +393,9 @@
   .block {
     display: block;
   }
+  .inline-block {
+    display: inline-block;
+  }
   .inline {
     display: inline;
   }
@@ -426,9 +429,6 @@
   .h-1 {
     height: 0.25rem;
   }
-  .h-1\/2 {
-    height: 50%;
-  }
   .h-10 {
     height: 2.5rem;
   }
@@ -455,6 +455,9 @@
   }
   .h-3\.5 {
     height: 0.875rem;
+  }
+  .h-3\/4 {
+    height: 75%;
   }
   .h-3\/5 {
     height: 60%;
@@ -788,9 +791,6 @@
     --tw-space-y-reverse: 0;
     margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
     margin-bottom: calc(1rem * var(--tw-space-y-reverse));
-  }
-  .justify-self-center {
-    justify-self: center;
   }
   .overflow-auto {
     overflow: auto;
@@ -1543,7 +1543,8 @@
 
 /* Specifically reset basic elements within our scope to counter preflight:false */
 
-#comfyui-copilot-plugin {
+#comfyui-copilot-plugin,
+#comfyui-copilot-start-pop-view {
   /* Reset common elements */
   h1, h2, h3, h4, h5, h6, p, ul, ol, button, input, textarea, select {
     margin: 0;

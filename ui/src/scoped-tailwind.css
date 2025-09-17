@@ -2,7 +2,7 @@
 #comfyui-copilot-image-upload-modal,
 #comfyui-copilot-rewrite-expert-modal,
 #comfyui-copilot-model-download-modal,
-#comfyui-copilot-model-download
+#comfyui-copilot-model-download,
 #comfyui-copilot-start-pop-view {
   @tailwind base;
   @tailwind components;
@@ -13,7 +13,8 @@
 }
 
 /* Specifically reset basic elements within our scope to counter preflight:false */
-#comfyui-copilot-plugin {
+#comfyui-copilot-plugin,
+#comfyui-copilot-start-pop-view {
   /* Reset common elements */
   h1, h2, h3, h4, h5, h6, p, ul, ol, button, input, textarea, select {
     margin: 0;

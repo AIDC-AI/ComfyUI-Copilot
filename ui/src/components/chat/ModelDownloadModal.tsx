@@ -1,3 +1,11 @@
+/*
+ * @Author: ai-business-hql ai.bussiness.hql@gmail.com
+ * @Date: 2025-09-17 16:45:52
+ * @LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
+ * @LastEditTime: 2025-09-17 17:18:07
+ * @FilePath: /ComfyUI-Copilot/ui/src/components/chat/ModelDownloadModal.tsx
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 import { useEffect, useRef, useState } from "react";
 import { XIcon } from "./Icons";
 import { Input } from 'antd';
@@ -14,14 +22,14 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
   const { onClose } = props;
 
   const [loading, setLoading] = useState<boolean>(false)
-  const [modelSuggests, setModelSuggests] = useState<any[]>([])
+  const [modelList, setModelList] = useState<any[]>([])
   const ref = useRef<InputRef>(null)
 
   useEffect(() => {
     ref?.current?.focus()
-  }, [modelSuggests])
+  }, [modelList])
 
-  const getModelSuggests = async (keyword: string) => {
+  const getModelList = async (keyword: string) => {
     setLoading(true)
     try {
       WorkflowChatAPI.trackEvent({
@@ -29,9 +37,9 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
         message_type: 'model',
         data: { keyword }
       })
-      const response = await fetch(`/api/model-suggests?keyword=${keyword}`)
+      const response = await fetch(`/api/model-searchs?keyword=${keyword}`)
       const data = await response.json()
-      setModelSuggests(data?.data?.suggests || [])
+      setModelList(data?.data?.searchs || [])
     } catch (e) {
       console.log('e--->',e)
     } finally {
@@ -40,7 +48,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
   }
 
   const handleSearchModel = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    getModelSuggests(e.target.value)
+    getModelList(e.target.value)
   }
 
   return <div 
@@ -50,7 +58,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
         backgroundColor: 'rgba(0,0,0,0.5)'
     }}
   >
-    <div className="relative bg-white rounded-xl p-6 w-1/2 h-1/2 flex flex-col">
+    <div className="relative bg-white rounded-xl p-6 w-1/2 h-3/4 flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl text-gray-900 font-semibold">Model Download</h2>
         <button 
@@ -71,7 +79,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
           className="search-input w-1/4 bg-white text-[#888] placeholder-gray-500 border border-gray-300"
         />
       </div>
-      <ModelOption modelSuggests={modelSuggests} loading={loading} showTitle={false} />
+      <ModelOption modelList={modelList} loading={loading} showTitle={false} />
     </div>
   </div>
 }

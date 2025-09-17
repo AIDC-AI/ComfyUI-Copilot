@@ -19,7 +19,9 @@ import folder_paths
 class ModelScopeGateway:
     BASE_URL = "https://www.modelscope.cn"
     SUGGEST_ENDPOINT = f"{BASE_URL}/api/v1/dolphin/model/suggestv2"
-
+    SEARCH_ENDPOINT = f"{BASE_URL}/api/v1/dolphin/models"
+    SEARCH_SINGLE_ENDPOINT = f"{BASE_URL}/api/v1/models"
+    
     def __init__(self, timeout: float = 10.0, retries: int = 3, backoff: float = 0.5):
         self.timeout = timeout
 
@@ -36,13 +38,75 @@ class ModelScopeGateway:
             total=retries,
             backoff_factor=backoff,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST"],
+            allowed_methods=["GET", "POST", "PUT"],
             raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry_cfg)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
+    def formatData(self, data: Any) -> Dict[str, Any]:
+        inner = data.get('Model', {}) if isinstance(data, dict) else {}
+        path = data.get('Path') or inner.get('Path')
+        name = data.get('Name') or inner.get('Name')
+        revision = data.get('Revision') or inner.get('Revision')
+        # size = self.get_model_size(path, name, revision)
+        return {
+            "Libraries": data.get("Libraries") or inner.get("Libraries"),
+            "ChineseName": data.get("ChineseName") or inner.get("ChineseName"),
+            "Id": data.get("Id") or inner.get("Id") or data.get("ModelId") or inner.get("ModelId"),
+            "Name": data.get("Name") or inner.get("Name"),
+            "Path": data.get("Path") or inner.get("Path"),
+            "LastUpdatedTime": data.get("LastUpdatedTime") or inner.get("LastUpdatedTime") or data.get("LastUpdatedAt") or inner.get("LastUpdatedAt"),
+            "Downloads": data.get("Downloads") or inner.get("Downloads") or data.get("DownloadCount") or inner.get("DownloadCount"),
+            # "Size": size or 0
+        }
+
+    def get_single_model(self, path: str, name: str) -> Optional[Dict[str, Any]]:
+        """
+        调用单模型详情接口。
+        返回原始 JSON（尽量保持结构，便于 formatData 处理），失败返回 None。
+        """
+        if path is None or name is None:
+            return None
+        try:
+            url = f"{self.SEARCH_SINGLE_ENDPOINT}/{path}/{name}"
+            resp = self.session.get(url, timeout=self.timeout)
+            resp.raise_for_status()
+            body = resp.json()
+            # 兼容不同返回包裹层级
+            if isinstance(body, dict):
+                data = body.get("Data") or body.get("data") or body
+                return data
+            return body
+        except Exception as e:
+            log.error(f"ModelScope single fetch failed for path={path}: name={name}: {e}")
+            return None
+        
+    def get_model_size(self, path: str, name: str, revision: str, root: str = '') -> int:
+        """
+        调用单模型详情接口。
+        返回原始 JSON（尽量保持结构，便于 formatData 处理），失败返回 None。
+        """
+        if path is None or name is None or revision is None:
+            return 0
+        try:
+            url = f"{self.SEARCH_SINGLE_ENDPOINT}/{path}/{name}/repo/files?Revision={revision}&Root={root}"
+            resp = self.session.get(url, timeout=self.timeout)
+            resp.raise_for_status()
+            body = resp.json()
+            # 兼容不同返回包裹层级
+            if isinstance(body, dict):
+                data = body["Data"]["Files"]
+                size = 0
+                for item in data:
+                    size += item.get("Size") or 0
+                return size
+            return 0
+        except Exception as e:
+            log.error(f"ModelScope model size fetch failed for path={path}: name={name}: rversion={rversion}: {e}")
+            return 0
+    
     def suggest(
         self,
         name: str,
@@ -63,7 +127,11 @@ class ModelScopeGateway:
                         "ChineseName": "中文名称",
                         "Id": 294066,
                         "Name": "SD3-Controlnet-Pose",
-                        "Path": "InstantX"
+                        "Path": "InstantX",
+                        "Libraries": ["pytorch","lora","safetensors"],
+                        "LastUpdatedTime": "1733042611",
+                        "Downloads": 100,
+                        "Size": 100000
                     }
                 ]
             }
@@ -88,7 +156,77 @@ class ModelScopeGateway:
         or body['Data']['Model']['Suggests'] is None or (len(body['Data']['Model']['Suggests']) == 0):
             log.error(f"ModelScope suggest failed: {body}, request: {payload}")
             return {"data": None}
-        return {"data": body['Data']['Model']['Suggests']}
+        models = body['Data']['Model']['Suggests']
+        picked: List[Dict[str, Any]] = []
+        for item in models:
+            base = item or {}
+            inner = base.get('Model', {}) if isinstance(base, dict) else {}
+            path = base.get('Path') or inner.get('Path')
+            name = base.get('Name') or inner.get('Name')
+            detail= self.get_single_model(path, name)
+            data = self.formatData(detail or base)
+            picked.append(data)
+        total = body['Data']['Model'].get('TotalCount') or body['Data']['Model'].get('Total') or 0
+        return {"data": picked, "total": total}
+
+    def search(
+        self,
+        name: str,
+        page: int = 1,
+        page_size: int = 30,
+        sort_by: str = "Default",
+        target: str = "",
+        single_criterion: Optional[List[Dict[str, Any]]] = None,
+        criterion: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """
+        调用 models 模糊搜索接口；返回 body 与当前 Cookie。
+        
+        Returns:
+            Dict[str, Any]: 返回的模型列表，格式为：
+            {
+                "data": [
+                    {
+                        "ChineseName": "中文名称",
+                        "Id": 294066,
+                        "Name": "SD3-Controlnet-Pose",
+                        "Path": "InstantX",
+                        "Libraries": ["pytorch","lora","safetensors"],
+                        "LastUpdatedTime": "1733042611",
+                        "Downloads": 100,
+                        "Size": 100000
+                    }
+                ]
+            }
+        """
+        payload = {
+            "PageSize": page_size,
+            "PageNumber": page,
+            "SortBy": sort_by,
+            "Target": target,
+            "SingleCriterion": single_criterion or [],
+            "Name": name,
+            "Criterion" : criterion
+        }
+
+        resp = self.session.put(
+            self.SEARCH_ENDPOINT,
+            json=payload,
+            timeout=self.timeout,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if body['Data'] is None or body['Data']['Model'] is None \
+        or body['Data']['Model']['Models'] is None or (len(body['Data']['Model']['Models']) == 0):
+            log.error(f"ModelScope search failed: {body}, request: {payload}")
+            return {"data": None}
+        models = body['Data']['Model']['Models'] or []
+        picked: List[Dict[str, Any]] = []
+        for item in models:
+            data = self.formatData(item or {})
+            picked.append(data)
+        total = body['Data']['Model'].get('TotalCount') or body['Data']['Model'].get('Total') or 0
+        return {"data": picked, "total": total}
 
     def download_with_sdk(
         self,
