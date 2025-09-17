@@ -2,7 +2,7 @@
 Author: ai-business-hql ai.bussiness.hql@gmail.com
 Date: 2025-08-25 20:16:18
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-08-25 21:08:36
+LastEditTime: 2025-08-28 11:16:40
 FilePath: /ComfyUI-Copilot/backend/service/workflow_rewrite_agent_simple.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -72,8 +72,8 @@ ComfyUI API格式工作流是一个JSON对象，其中：
 ## 重写原则
 1. **保持结构完整性**：确保所有节点的必需输入都有连接
 2. **类型匹配**：输入输出类型必须严格匹配
-3. **连接正确性**：确保节点间的连接关系正确
-4. **功能实现**：确保改写后的工作流能实现用户的重写意图
+3. **连接正确性**：确保节点间的连接关系正确，不要有参数类型不匹配的链接
+4. **功能实现**：确保改写后的工作流能正常运行且实现用户的重写意图
 
 ## 重要：输出格式要求
 你必须严格按照以下JSON格式返回结果，不要添加任何其他说明文字：

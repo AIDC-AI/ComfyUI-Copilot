@@ -25,10 +25,3 @@ export interface DropdownState {
 export interface WidgetParamConf {
   [key: string]: any;
 }
-
-// Interface for uploaded image
-export interface UploadedImage {
-  id: string;
-  file: File;
-  preview: string;
-} 

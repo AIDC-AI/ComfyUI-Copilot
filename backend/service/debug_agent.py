@@ -226,8 +226,6 @@ async def debug_workflow_errors(workflow_data: Dict[str, Any]):
             name="ComfyUI-Debug-Coordinator",
             instructions=f"""You are a ComfyUI workflow debugging coordinator. Your role is to analyze workflow errors and coordinate with specialized agents to fix them.
 
-**Session ID:** {session_id}
-
 **Your Process:**
 1. **Validate the workflow**: Use run_workflow() to validate the workflow and capture any errors
 2. **Analyze errors**: If errors occur, use analyze_error_type() to determine the error type and hand off to the appropriate specialist. Note that analyze_error_type can help you determine the error type and which agent to hand off to, but it's only for reference. You still need to judge based on the current error information to determine which type of error it is:
@@ -504,7 +502,7 @@ Start by validating the workflow to see its current state.""",
         agent.handoffs = [link_agent, workflow_bugfix_default_agent, parameter_agent]
 
         # Initial message to start the debugging process
-        messages = [{"role": "user", "content": f"Validate and debug this ComfyUI workflow. Session ID: {session_id}"}]
+        messages = [{"role": "user", "content": f"Validate and debug this ComfyUI workflow."}]
             
         log.info(f"-- Starting workflow validation process for session {session_id}")
 

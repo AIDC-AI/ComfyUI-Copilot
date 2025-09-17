@@ -20,6 +20,15 @@ const RestoreCheckpoint = ({ checkpointId, onRestore, title }: { checkpointId: n
       
       setIsRestoring(true);
       try {
+          // track restore event before actual restore
+          WorkflowChatAPI.trackEvent({
+              event_type: 'restore_checkpoint',
+              message_type: 'ui',
+              data: {
+                  checkpoint_id: checkpointId
+              }
+          });
+
           const checkpointData = await WorkflowChatAPI.restoreWorkflowCheckpoint(checkpointId);
           
           // Use UI format if available, otherwise use API format

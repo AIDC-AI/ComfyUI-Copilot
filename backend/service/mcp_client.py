@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-08-25 20:06:27
+LastEditTime: 2025-09-02 17:11:50
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -13,14 +13,25 @@ import os
 import traceback
 from typing import List, Dict, Any, Optional
 
-from agents._config import set_default_openai_api
-from agents.agent import Agent
-from agents.items import ItemHelpers
-from agents.mcp import MCPServerSse
-from agents.run import Runner
-from agents.tracing import set_tracing_disabled
-from agents import handoff, RunContextWrapper
-from agents.extensions import handoff_filters
+try:
+    from agents._config import set_default_openai_api
+    from agents.agent import Agent
+    from agents.items import ItemHelpers
+    from agents.mcp import MCPServerSse
+    from agents.run import Runner
+    from agents.tracing import set_tracing_disabled
+    from agents import handoff, RunContextWrapper
+    from agents.extensions import handoff_filters
+    if not hasattr(__import__('agents'), 'Agent'):
+        raise ImportError
+except Exception:
+    raise ImportError(
+        "Detected incorrect or missing 'agents' package while loading MCP components. "
+        "Please install 'openai-agents' and ensure this plugin prefers it. Commands:\n"
+        "  python -m pip uninstall -y agents gym tensorflow\n"
+        "  python -m pip install -U openai-agents\n\n"
+        "Or set COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 to prefer openai-agents without uninstalling."
+    )
 
 from ..agent_factory import create_agent
 from ..service.workflow_rewrite_agent import create_workflow_rewrite_agent
@@ -71,10 +82,7 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
         ) as server:
             # tools = await server.list_tools()
             
-            # Get model from environment or use default
-            model_name = os.environ.get("OPENAI_MODEL", "gemini-2.5-flash")
-            if config and config.get("model_select") and config.get("model_select") != "":
-                model_name = config.get("model_select")
+            # Model selection is handled inside create_agent via config / kwargs precedence
             
             # 创建workflow_rewrite_agent实例 (session_id通过context获取)
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
@@ -95,8 +103,6 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             agent = create_agent(
                 name="ComfyUI-Copilot",
                 instructions=f"""You are a powerful AI assistant for designing image processing workflows, capable of automating problem-solving using tools and commands.
-
-**Current Session ID:** {session_id}
 
 When handing off to workflow rewrite agent or other agents, this session ID should be used for workflow data management.
 
@@ -136,7 +142,6 @@ You must adhere to the following constraints to complete the task:
      - Alternative approaches if the extension is problematic
                 """,
                 mcp_servers=[server],
-                model=model_name,
                 handoffs=[handoff_rewrite],
                 config=config
             )

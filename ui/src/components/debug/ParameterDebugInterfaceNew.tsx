@@ -94,6 +94,7 @@ import {
   handleClose as utilsHandleClose
 } from './utils/stateManagementUtils';
 import { isObj } from '../../utils/tools';
+import { isEqual } from 'lodash'
 
 // Note: Removed duplicate interface definitions to use imported types instead
 export const enum StateKey {
@@ -118,6 +119,7 @@ export const ParameterDebugInterface: React.FC<ParameterDebugInterfaceProps> = (
   visible,
   onClose
 }) => {
+  const currentSelectedNodes = useRef<any>([])
   const [currentScreen, setCurrentScreen] = useState(0);
   const [selectedParams, setSelectedParams] = useState<{[key: string]: boolean}>({
     Steps: true,
@@ -381,11 +383,11 @@ export const ParameterDebugInterface: React.FC<ParameterDebugInterfaceProps> = (
     // Save state to localStorage after each update
     doSaveState(key, value);
   }
-  
+
   // Add useEffect to initialize parameter test values when selectedNodes change
   useEffect(() => {
     if (!isGetLocalstorage || !selectedNodes || selectedNodes.length === 0) return;
-    
+
     // Initialize empty parameter test values for any newly selected nodes
     const updatedParamTestValues = { ...paramTestValues };
     
@@ -527,7 +529,10 @@ export const ParameterDebugInterface: React.FC<ParameterDebugInterfaceProps> = (
           }
           
           // Restore all states
-          if (parsedState.currentScreen !== undefined) setCurrentScreen(parsedState.currentScreen);
+          if (parsedState.currentScreen !== undefined) {
+            // if selectedNodes is changed, reset currentScreen to 0
+            setCurrentScreen(isEqual(selectedNodes, currentSelectedNodes.current) ? parsedState.currentScreen : 0);
+          }
           if (parsedState.selectedParams) setSelectedParams(parsedState.selectedParams);
           if (parsedState.task_id) setTask_id(parsedState.task_id);
           
@@ -552,13 +557,12 @@ export const ParameterDebugInterface: React.FC<ParameterDebugInterfaceProps> = (
           if (parsedState.inputValues) setInputValues(parsedState.inputValues);
           if (parsedState.currentPage !== undefined) setCurrentPage(parsedState.currentPage);
           if (parsedState.textInputs) setTextInputs(parsedState.textInputs);
-          if (!isGetLocalstorage) {
-            setIsGetLocalstorage(true)
-          }
+          if (!isGetLocalstorage) setIsGetLocalstorage(true)
         }
       } catch (error) {
         console.error('Error loading parameter debug state:', error);
       } finally {
+        currentSelectedNodes.current = selectedNodes
         // Set loading to false after loading (with a small delay to ensure all state is updated)
         setTimeout(() => {
           setIsLoading(false);

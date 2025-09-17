@@ -2,19 +2,25 @@
 // Licensed under the MIT License.
 
 import { ChangeEvent, KeyboardEvent, useState, useRef, useEffect, useLayoutEffect, ReactNode, forwardRef, useImperativeHandle } from 'react';
-import { SendIcon, ImageIcon, PlusIcon, XIcon, StopIcon } from './Icons';
-import React from 'react';
+import { SendIcon, ImageIcon, XIcon, StopIcon } from './Icons';
 import { WorkflowChatAPI } from '../../apis/workflowChatApi';
 import { generateUUID } from '../../utils/uuid';
-import { Portal } from './Portal';
 import ImageLoading from '../ui/Image-Loading';
 import { useChatContext } from '../../context/ChatContext';
 import RewriteExpertModal from './RewriteExpertModal';
+import ButtonWithModal from '../ui/ButtonWithModal';
+import { UploadedImage } from '../../types/types';
+import ImageUploadModal from './ImageUploadModal';
+import PackageDownloadModal from './ModelDownloadModal';
+import { getLocalStorage, LocalStorageKeys, setLocalStorage } from '../../utils/localStorageManager';
 
 // Debug icon component
 const DebugIcon = ({ className }: { className: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5s-.96.06-1.42.17L8.41 3 7 4.41l1.63 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/>
+    <svg className={className} viewBox="0 0 1024 1024" fill="currentColor">
+        <path d="M928 576h-96.32V365.333333l86.826667-86.613333c12.48-12.48 12.48-32.746667 0.106666-45.226667-12.586667-12.586667-32.853333-12.48-45.333333-0.106666L786.453333 320H237.226667l-86.933334-86.613333c-12.48-12.48-32.746667-12.48-45.226666 0.106666-12.48 12.48-12.48 32.746667 0.106666 45.226667l87.146667 86.933333V576H96c-17.706667 0-32 14.293333-32 32s14.293333 32 32 32h96.32v29.653333c-0.213333 1.493333-0.32 2.986667-0.32 4.48 0 50.24 13.546667 97.493333 37.546667 138.986667l-92.053334 92.16c-12.48 12.48-12.48 32.746667 0 45.226667 6.293333 6.293333 14.4 9.386667 22.613334 9.386666s16.426667-3.093333 22.613333-9.386666l85.12-85.226667c58.773333 64.106667 146.346667 104.96 244.16 104.96 97.813333 0 185.493333-40.853333 244.16-104.96l85.226667 85.333333c6.293333 6.293333 14.4 9.386667 22.613333 9.386667s16.426667-3.093333 22.613333-9.386667c12.48-12.48 12.48-32.746667 0-45.226666l-92.16-92.266667c23.893333-41.493333 37.44-88.746667 37.44-138.986667 0-1.493333-0.106667-2.986667-0.32-4.48V640H928c17.706667 0 32-14.293333 32-32s-14.293333-32-32-32zM543.573333 904.533333c0.32-1.706667 0.426667-3.413333 0.426667-5.226666V544c0-17.706667-14.293333-32-32-32s-32 14.293333-32 32v355.413333c0 1.813333 0.106667 3.52 0.426667 5.226667-124.8-13.973333-222.08-109.76-224.426667-226.133333 0.213333-1.386667 0.32-2.773333 0.32-4.16V384h511.36v290.24c0 1.386667 0.106667 2.773333 0.213333 4.16-2.24 116.373333-99.52 212.16-224.32 226.133333z">
+        </path>
+        <path d="M352 256h320c10.24 0 19.733333-4.8 25.813333-13.013333 5.973333-8.213333 7.786667-18.773333 4.8-28.48C674.453333 124.48 597.76 64 512 64c-85.866667 0-162.453333 60.48-190.506667 150.506667-3.093333 9.706667-1.28 20.266667 4.8 28.48 5.973333 8.213333 15.466667 13.013333 25.706667 13.013333z m160-128c43.84 0 84.48 24.533333 110.08 64H401.92c25.6-39.466667 66.24-64 110.08-64z">
+        </path>
     </svg>
 );
 
@@ -26,6 +32,14 @@ const ExpertIcon = ({ className }: { className: string }) => (
         </path>
     </svg>
 );
+
+const PackageIcon = ({ className }: { className: string }) => (
+    <svg className={className} viewBox="0 0 1024 1024" fill="currentColor">
+        <path d="M820.376748 284.430361v228.885113a20.509419 20.509419 0 0 0 41.018838 0V249.974538a19.689042 19.689042 0 0 0-2.871319-9.434333v-2.050942a21.739984 21.739984 0 0 0-5.332449-5.332448L423.314402 2.630948a20.509419 20.509419 0 0 0-20.09923 0L10.254709 232.336438a13.946405 13.946405 0 0 0-4.92226 4.92226v2.461131a16.407535 16.407535 0 0 0-5.332449 10.254709v533.244886a8.203767 8.203767 0 0 0 2.46113 2.871319l2.871319 2.871319 392.960462 229.295301a20.09923 20.09923 0 0 0 20.099231 0l196.890419-100.085964a20.919607 20.919607 0 0 0 8.203768-27.892809 20.509419 20.509419 0 0 0-27.89281-8.613956l-164.075349 87.780312v-243.651894l189.917217-102.136905a20.509419 20.509419 0 0 0 11.075086-18.048289V383.695948zM41.018837 287.30168l184.17458 105.8286V615.452379l2.461131 3.281507a11.075086 11.075086 0 0 0 3.281507 2.871319l157.512335 91.882196v252.676038L41.018837 762.710006z m351.941625 210.016448v172.279117l-126.748207-75.88485v-176.381L394.191028 492.395867a22.150172 22.150172 0 0 0-1.230566 3.281507z m20.919608-41.018838l-137.413106-82.037675 146.43725-85.72937L574.263724 369.339355z m0-410.188374l382.295564 205.094187L615.282561 347.189183l-182.944015-98.855399a20.509419 20.509419 0 0 0-20.09923 0L235.448127 351.701255 61.118068 249.974538z m180.072696 549.242233l-159.973466 86.139559v-185.815334-3.691695l160.383654-86.139559zM1066.489773 841.876362a20.509419 20.509419 0 0 0-29.123375 0l-98.035021 95.984079v-229.295301a20.509419 20.509419 0 0 0-41.018837 0v229.295301l-95.98408-95.984079a20.509419 20.509419 0 0 0-29.123375 0 20.509419 20.509419 0 0 0 0 28.713186l131.26028 131.26028a20.919607 20.919607 0 0 0 28.713186 0l131.26028-131.26028a20.509419 20.509419 0 0 0 2.050942-28.713186z">
+        </path>
+    </svg>
+);
+
 interface ChatInputProps {
     input: string;
     loading: boolean;
@@ -41,19 +55,9 @@ interface ChatInputProps {
     onAddDebugMessage?: (message: any) => void;
 }
 
-export interface UploadedImage {
-    id: string;
-    file: File;
-    preview: string;
-    url: string;
-}
-
 export interface ChatInputRef {
     refreshModels: () => void;
 }
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({ 
     input, 
@@ -71,13 +75,8 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
 }, ref) => {
     const { state, dispatch } = useChatContext();
     const { messages } = state;
-    const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showRewriteExpertModal, setShowRewriteExpertModal] = useState(false);
-    const [models, setModels] = useState<{
-        label: ReactNode; name: string; image_enable: boolean 
-}[]>([]);
+    const [models, setModels] = useState<{label: ReactNode; name: string; image_enable: boolean }[]>([]);
 
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // 精确监听 textarea 的 scrollHeight 变化（处理 flex 布局）
@@ -130,29 +129,55 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
         }
     }, [input]);
 
+    const updateModels = (list: {label: string; name: string; image_enable: boolean }[]) => {
+        const selectedModel = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_SELECTED);
+        // 之前记录的能在列表中找到，使用之前的记录。否则使用列表第一项重置
+        if (selectedModel && list.findIndex(model => model.name === selectedModel) !== -1) {
+            onModelChange(selectedModel)
+        } else {
+            onModelChange(list[0].name)
+        }
+        setLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_LIST, JSON.stringify(list));
+        setModels([...list,
+            {
+                "label": "reload",
+                "name": "reload",
+                "image_enable": true
+            }
+        ]);
+    }
+
     // Function to load models from API
     const loadModels = async () => {
         try {
             const result = await WorkflowChatAPI.listModels();
-            setModels(result.models);
+            updateModels(result.models);
         } catch (error) {
             console.error('Failed to load models:', error);
             // Fallback to default models if API fails
-            setModels([{
-                "label": "gemini-2.5-flash",
-                "name": "gemini-2.5-flash",
-                "image_enable": true
-            },
-            {
-                "label": "gpt-4.1-mini",
-                "name": "gpt-4.1-mini-2025-04-14-GlobalStandard",
-                "image_enable": true,
-            },
-            {
-                "label": "gpt-4.1",
-                "name": "gpt-4.1-2025-04-14-GlobalStandard",
-                "image_enable": true,
-            }]);
+            const list = [
+                {
+                    "label": "gemini-2.5-flash",
+                    "name": "gemini-2.5-flash",
+                    "image_enable": true
+                },
+                {
+                    "label": "gpt-4.1-mini",
+                    "name": "gpt-4.1-mini-2025-04-14-GlobalStandard",
+                    "image_enable": true,
+                },
+                {
+                    "label": "gpt-4.1",
+                    "name": "gpt-4.1-2025-04-14-GlobalStandard",
+                    "image_enable": true,
+                },
+                {
+                    "label": "reload",
+                    "name": "reload",
+                    "image_enable": true
+                }
+            ]
+            updateModels(list);
         }
     };
 
@@ -163,47 +188,27 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
 
     // Load models on component mount
     useEffect(() => {
+        // 1天之内不再重新获取models
+        const currentTime = new Date().getTime()
+        const time = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME);
+        // 一天之内使用当前缓存
+        if (!!Number(time) && currentTime - Number(time) < 1000 * 60 * 60 * 24) {
+            const list = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_LIST);
+            if (!!list) {
+                updateModels(JSON.parse(list));
+            }
+            return;
+        }
+        setLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME, new Date().getTime().toString());
         loadModels();
     }, []);
 
-    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) {
-            if (uploadedImages?.length >= 3) {
-                alert('You can only upload up to 3 images');
-                return;
-            }
-
-            const invalidFiles: string[] = [];
-            const validFiles: File[] = [];
-
-            Array.from(event.target.files).forEach(file => {
-                if (!SUPPORTED_FORMATS.includes(file.type)) {
-                    invalidFiles.push(`${file.name} (unsupported format)`);
-                } else if (file.size > MAX_FILE_SIZE) {
-                    invalidFiles.push(`${file.name} (exceeds 5MB)`);
-                } else {
-                    validFiles.push(file);
-                }
-            });
-
-            if (invalidFiles.length > 0) {
-                alert(`The following files couldn't be uploaded:\n${invalidFiles.join('\n')}`);
-            }
-
-            if (uploadedImages?.length + validFiles.length > 3) {
-                alert('You can only upload up to 3 images');
-                return;
-            }
-
-            if (validFiles.length > 0) {
-                const dataTransfer = new DataTransfer();
-                validFiles.forEach(file => dataTransfer.items.add(file));
-                onUploadImages(dataTransfer.files);
-            }
-        }
-    };
-
     const handleDebugClick = () => {
+        WorkflowChatAPI.trackEvent({
+            event_type: 'debug_icon_click',
+            message_type: 'debug',
+            data: {}
+        })
         if (onAddDebugMessage) {
             if (messages?.[0]?.role === 'showcase') {
                 dispatch({ type: 'CLEAR_MESSAGES' });
@@ -221,6 +226,14 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
             onAddDebugMessage(debugMessage);
         }
     };
+
+    const handleModelSelected = (value: string) => {
+        if (value === 'reload') {
+            loadModels();
+        } else {
+            onModelChange(value);
+        }
+    }
 
     return (
         <div className={`relative ${uploadedImages.length > 0 ? 'mt-12' : ''}`}>
@@ -249,23 +262,30 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
             )}
 
             <div className="w-full flex flex-row justify-end p-1 gap-2">
+                <ButtonWithModal 
+                    buttonClass="rounded-md bg-white border-none 
+                                hover:!bg-gray-100"
+                    buttonContent={<PackageIcon className="h-5 w-5" />}
+                    onOpen={() => {
+                        WorkflowChatAPI.trackEvent({
+                            event_type: 'model_download_icon_click',
+                            message_type: 'ui',
+                            data: {}
+                        })
+                    }}
+                    renderModal={(onClose) => <PackageDownloadModal onClose={onClose} />}
+                />
+                <ButtonWithModal
+                    buttonClass="rounded-md bg-white border-none 
+                                hover:!bg-gray-100"
+                    buttonContent={<ExpertIcon className="h-5 w-5" />}
+                    renderModal={(onClose) => <RewriteExpertModal onClose={onClose} />}
+                />
                 <button
-                    type="button"
-                    onClick={() => setShowRewriteExpertModal(true)}
-                    className="rounded-md bg-white border-none 
-                                hover:!bg-gray-100
-                                transition-all duration-200 active:scale-95"
-                    title="Debug workflow">
-                    <ExpertIcon className="h-5 w-5" />
-                </button>
-                <button
-                    type="button"
                     onClick={handleDebugClick}
                     className="rounded-md bg-white border-none 
-                                hover:!bg-gray-100
-                                transition-all duration-200 active:scale-95
-                                animate-breathe-green"
-                    title="Debug workflow">
+                                hover:!bg-gray-100"
+                >
                     <DebugIcon className="h-5 w-5" />
                 </button>
             </div>
@@ -301,29 +321,32 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                 {/* Model selector dropdown */}
                 <select
                     value={selectedModel}
-                    onChange={(e) => onModelChange(e.target.value)}
+                    onChange={(e) => handleModelSelected(e.target.value)}
                     className="px-1.5 py-0.5 text-xs rounded-md 
                              border border-gray-200 bg-white text-gray-700
                              focus:outline-none focus:ring-2 focus:ring-blue-500
                              focus:border-transparent hover:bg-gray-50
                              transition-colors border-0"
                 >
-                    {models.map((model) => (
+                    {models?.map((model) => (
                         <option value={model.name} key={model.name}>{model.label}</option>
                     ))}
                 </select>
 
                 {/* Upload image button */}
-                <button
-                    type="button"
-                    onClick={() => setShowUploadModal(true)}
-                    disabled={!models.find(model => model.name === selectedModel)?.image_enable}
-                    className={`p-1.5 text-gray-500 bg-white border-none
-                             hover:!bg-gray-100 hover:!text-gray-600 
-                             transition-all duration-200 outline-none
-                             ${!models.find(model => model.name === selectedModel)?.image_enable ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <ImageIcon className="h-4 w-4" />
-                </button>
+                <ButtonWithModal 
+                    buttonClass={`p-1.5 text-gray-500 bg-white border-none
+                        hover:!bg-gray-100 hover:!text-gray-600 
+                        transition-all duration-200 outline-none
+                        ${!models?.find(model => model.name === selectedModel)?.image_enable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    buttonContent={<ImageIcon className="h-4 w-4" />}
+                    renderModal={(onClose) => <ImageUploadModal 
+                        onUploadImages={onUploadImages}
+                        uploadedImages={uploadedImages}
+                        onRemoveImage={onRemoveImage}
+                        onClose={onClose}
+                    />}
+                />
             </div>
 
             {/* Send button */}
@@ -340,106 +363,6 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                     <SendIcon className="h-5 w-5 group-hover:translate-x-1" />
                 )}
             </button>
-
-            {/* Debug button */}
-            {/* <button
-                type="button"
-                onClick={handleDebugClick}
-                className="absolute bottom-3 right-14 p-2 rounded-md text-gray-500 bg-white border-none 
-                         hover:bg-gray-100 hover:text-gray-600 
-                         transition-all duration-200 active:scale-95"
-                title="Debug workflow">
-                <DebugIcon className="h-5 w-5" />
-            </button> */}
-            {
-                showRewriteExpertModal && <RewriteExpertModal onClose={() => setShowRewriteExpertModal(false)} />
-            }
-            {/* 上传图片模态框 */}
-            {showUploadModal && (
-                <Portal>
-                    <div 
-                        id="comfyui-copilot-modal" 
-                        className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center"
-                        style={{
-                            backgroundColor: 'rgba(0,0,0,0.5)'
-                        }}
-                    >
-                        <div className="bg-white rounded-lg p-6 w-96 relative">
-                            <button 
-                                onClick={() => setShowUploadModal(false)}
-                                className="absolute top-2 right-2 bg-white border-none text-gray-500 hover:!text-gray-700"
-                            >
-                                <XIcon className="w-5 h-5" />
-                            </button>
-                            
-                            <h3 className="text-lg text-gray-800 font-medium mb-4">Upload Images</h3>
-                            
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8
-                                        flex flex-col items-center justify-center gap-4
-                                        hover:!border-blue-500 transition-colors cursor-pointer"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <PlusIcon className="w-8 h-8 text-gray-400" />
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-500 mb-2">
-                                        Click to upload images or drag and drop
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        Supported formats: JPG, PNG, GIF, WebP
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        Max file size: 5MB, Max 3 images
-                                    </p>
-                                </div>
-                            </div>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept={SUPPORTED_FORMATS.join(',')}
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            {/* 预览区域 */}
-                            {uploadedImages.length > 0 && (
-                                <div className="mt-4 grid grid-cols-3 gap-2">
-                                    {uploadedImages.map(image => (
-                                        <div key={image.id} className="relative group">
-                                            <img 
-                                                src={image.preview} 
-                                                alt="preview" 
-                                                className="w-full h-20 object-contain"
-                                            />
-                                            {
-                                                !!image?.url && image?.url !== '' ? <button
-                                                    onClick={() => onRemoveImage(image.id)}
-                                                    className="absolute -top-1 -right-1 bg-white border-none text-gray-500 rounded-full p-0.5
-                                                            opacity-0 group-hover:!opacity-100 transition-opacity"
-                                                >
-                                                    <XIcon className="w-3 h-3" />
-                                                </button> : <ImageLoading />
-                                            }
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="mt-4 flex justify-end gap-2">
-                                <button
-                                    onClick={() => setShowUploadModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 
-                                            bg-white border border-gray-300 rounded-md 
-                                            hover:!bg-gray-50"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </Portal>
-            )}
         </div>
     );
 });

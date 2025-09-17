@@ -57,8 +57,6 @@ const LazyDebugResult = lazy(() => import('./messages/DebugResult').then(m => ({
 const DEFAULT_COUNT = 3;
 
 export function MessageList({ messages, latestInput, onOptionClick, installedNodes, onAddMessage, onUpdateMessage, loading, isActive }: MessageListProps) {
-    const { isAutoScroll } = useChatContext()
-
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [currentMessages, setCurrentMessages] = useState<Message[]>([])
     const scrollRef = useRef<HTMLDivElement>(null)
@@ -157,7 +155,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
         const updateScrollHeight = () => {
             requestAnimationFrame(() => {
                 // console.log('updateScrollHeight1--->', el.scrollHeight, el.scrollTop, el.clientHeight)
-                // console.log('updateScrollHeight2--->', scrollHeightLast.current, scrollHeightBeforeLoadMore.current, isLoadHistory.current, isAutoScroll.current)
+                // console.log('updateScrollHeight2--->', scrollHeightLast.current, scrollHeightBeforeLoadMore.current, isLoadHistory.current)
                 if (isLoadHistory.current) {
                     el.scrollTop = el.scrollHeight - scrollHeightBeforeLoadMore.current
                 } else {
@@ -190,7 +188,7 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
         const handleScroll = () => {   
             // console.log('handleScroll1--->', el.scrollHeight, el.scrollTop, el.clientHeight, el.scrollHeight - el.scrollTop - el.clientHeight)
             // console.log('handleScroll2--->', scrollHeightLast.current, scrollHeightBeforeLoadMore.current)
-            // console.log('handleScroll3--->', isLoadHistory.current, isAutoScroll.current)
+            // console.log('handleScroll3--->', isLoadHistory.current)
             if (el.scrollHeight < scrollHeightLast.current && scrollHeightLast.current > 0)
                 return
             if (isLoadHistory.current) {
@@ -205,7 +203,6 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
                 }
                 // console.log('handleScroll4--->', el.scrollHeight, el.scrollTop, el.clientHeight, el.scrollHeight - el.scrollTop - el.clientHeight)
             } else {
-                // console.log('isAutoScroll.current1--->', el.scrollHeight, el.scrollTop, el.clientHeight, el.scrollHeight - el.scrollTop - el.clientHeight)
                 // 滚动高度有变化，说明是在新增消息，上一次是滚动到底部，则需要保持滚动在底部
                 if (scrollHeightLast.current < el.scrollHeight && scrollHeightLast.current - scrollTopLast.current - clientHeightLast.current < 1) {
                     el.scrollTop = el.scrollHeight - el.clientHeight
@@ -217,18 +214,11 @@ export function MessageList({ messages, latestInput, onOptionClick, installedNod
             }
         }
 
-        const handleScrollEnd = () => {
-            // console.log('handleScrollEnd--->', el.scrollHeight, el.scrollTop, el.clientHeight)
-            // isAutoScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 1
-        }
-
         el.addEventListener('scroll', handleScroll);
-        el.addEventListener('scrollend', handleScrollEnd);
         return () => {
             resizeObserver.disconnect();
             mutationObserver.disconnect();
             el.removeEventListener('scroll', handleScroll);
-            el.removeEventListener('scrollend', handleScrollEnd);
         }
     }, [])
 

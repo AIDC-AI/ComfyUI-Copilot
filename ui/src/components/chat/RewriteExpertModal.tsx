@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createRewriteExpert, deleteRewriteExpert, getRewriteExpertsList, updateRewriteExpert } from "../../apis/rewriteExpertApi";
-import { Button, ConfigProvider, Form, Space, Table, type TableProps } from 'antd';
-import { Portal } from "./Portal";
+import { Button, Form, Space, Table, type TableProps } from 'antd';
 import { Input } from 'antd';
 import { XIcon, TrashIcon, CirclePlusIcon, FilePenLineIcon } from "./Icons";
 import { debounce } from "lodash";
 import Modal from '../ui/Modal';
-import { app } from "../../utils/comfyapp";
+import TableEmpty from "../ui/TableEmpty";
 
 const { TextArea } = Input
 
@@ -31,7 +30,6 @@ const RewriteExpertModal: React.FC<IProps> = ({onClose}) => {
   const [modalContent, setModalContent] = useState<string | null>(null)
   const [editData, setEditData] = useState<DataType | null>(null)
   const isAdd = useRef<boolean>(false)
-  const isDark = app.extensionManager.setting.get('Comfy.ColorPalette') === 'dark';
   
   const onEdit = (item: DataType) => {
     setEditData(item)
@@ -161,139 +159,114 @@ const RewriteExpertModal: React.FC<IProps> = ({onClose}) => {
   ];
 
   return (
-    <Portal>
-      <div 
-        id='comfyui-copilot-rewrite-expert-modal' 
-        className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center"
-        style={{
-          backgroundColor: 'rgba(0,0,0,0.5)'
-        }}
-      >
-        <ConfigProvider
-          theme={{
-            components: {
-              Table: {
-                borderColor: isDark ? '#666' : '#f0f0f0',
-                headerBg: isDark ? '#333' : '#fafafa',
-                headerColor: isDark ? '#fff' : '#fafafa',
-                rowHoverBg: isDark ? '#333' : '#fafafa',
-              },
-              Pagination: {
-                itemBg: isDark ? 'rgb(24, 24, 27)' : '#fff',  
-                itemActiveBg: isDark ? 'rgb(24, 24, 27)' : '#fff',  
-                colorText: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.88)',
-                colorBgTextHover: isDark ? '#555' : 'rgba(0,0,0,0.06)',
-                colorPrimary: isDark ? '#aaa' : '#1677ff',
-                colorPrimaryHover: isDark ? '#999' : '#4096ff',
-              },
-              Form: {
-                labelColor: isDark ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.88)'
-              }
-            }
-          }}
-        >
-          <div className="relative bg-white rounded-xl p-6 w-1/2 h-2/3 flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl text-gray-900 dark:text-white font-semibold">Set expert experience to help you rewrite workflow</h2>
-              <button 
-                onClick={onClose}
-                disabled={loading}
-                className="bg-white border-none text-gray-500 hover:!text-gray-700"
+    <div 
+      id='comfyui-copilot-rewrite-expert-modal' 
+      className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center"
+      style={{
+        backgroundColor: 'rgba(0,0,0,0.5)'
+      }}
+    >
+      <div className="relative bg-white rounded-xl p-6 w-1/2 h-2/3 flex flex-col">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl text-gray-900 dark:text-white font-semibold">Set expert experience to help you rewrite workflow</h2>
+          <button 
+            onClick={onClose}
+            disabled={loading}
+            className="bg-white border-none text-gray-500 hover:!text-gray-700"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex justify-between mb-2">
+          <Input 
+            placeholder="Enter search name" 
+            allowClear
+            value={searchValue}
+            disabled={loading}
+            onChange={debounce(handleSearchRewriteExpert, 500)}
+            className="search-input w-1/4 bg-white text-[#888] placeholder-gray-500 border border-gray-300"
+          />
+          <button
+            onClick={handleAddRewriteExpert}
+            className="bg-white border-none text-gray-500 hover:!text-gray-700"
+          >
+            <CirclePlusIcon className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <Table 
+            bordered
+            loading={loading}
+            columns={columns} 
+            dataSource={currentDataList} 
+            rowClassName={"text-gray-800"}
+            locale={{ emptyText: <TableEmpty /> }}
+          />
+        </div>
+        {
+          editData && <div className="absolute top-0 left-0 w-full h-full bg-white rounded-xl p-6 z-5 overflow-y-auto">
+            <h2 className="text-xl text-gray-900 dark:text-white font-semibold">{`${editData?.name && editData?.name !== '' ? 'Edit' : 'Add'} Rewrite Expert`}</h2>
+            <Form
+              onFinish={onFinish}
+              initialValues={editData}
+              layout="vertical"
+            >
+              <Form.Item
+                name="id" 
+                label="Id" 
+                hidden
               >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex justify-between mb-2">
-              <button
-                onClick={handleAddRewriteExpert}
-                className="bg-white border-none text-gray-500 hover:!text-gray-700"
+                <Input 
+                  disabled 
+                />
+              </Form.Item>
+              <Form.Item 
+                name="name" 
+                label="Name" 
+                rules={[{ required: true }]}
               >
-                <CirclePlusIcon className="w-5 h-5" />
-              </button>
-              <Input 
-                placeholder="Enter search name" 
-                allowClear
-                value={searchValue}
-                disabled={loading}
-                onChange={debounce(handleSearchRewriteExpert, 500)}
-                className="search-input w-1/4 bg-white text-[#888] placeholder-gray-500 border-gray-300"
-              />
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <Table 
-                bordered
-                loading={loading}
-                columns={columns} 
-                dataSource={currentDataList} 
-                rowClassName={"bg-white text-gray-800"}
-              />
-            </div>
-            {
-              editData && <div className="absolute top-0 left-0 w-full h-full bg-white rounded-xl p-6 z-5 overflow-y-auto">
-                <h2 className="text-xl text-gray-900 dark:text-white font-semibold">{`${editData?.name && editData?.name !== '' ? 'Edit' : 'Add'} Rewrite Expert`}</h2>
-                <Form
-                  onFinish={onFinish}
-                  initialValues={editData}
-                  layout="vertical"
-                >
-                  <Form.Item
-                    name="id" 
-                    label="Id" 
-                    hidden
-                  >
-                    <Input 
-                      disabled 
-                    />
-                  </Form.Item>
-                  <Form.Item 
-                    name="name" 
-                    label="Name" 
-                    rules={[{ required: true }]}
-                  >
-                    <Input 
-                      placeholder="Enter name" 
-                    />
-                  </Form.Item>
-                  <Form.Item 
-                    name="description" 
-                    label="Description" 
-                    rules={[{ required: true }]}
-                  >
-                    <TextArea 
-                      placeholder="Enter description" 
-                      autoSize={{ maxRows: 6 }}
-                    />
-                  </Form.Item>
-                  <Form.Item 
-                    name="content" 
-                    label="Content" 
-                    rules={[{ required: true }]}
-                  >
-                    <TextArea 
-                      placeholder="Enter content" 
-                      autoSize={{ maxRows: 10 }}
-                    />
-                  </Form.Item>
-                  <Form.Item>
-                    <Space align='end' size='middle'>
-                      <Button type="primary" htmlType="submit">
-                        Submit
-                      </Button>
-                      <Button onClick={onCancel}>
-                        Cancel
-                      </Button>
-                    </Space>
-                  </Form.Item>
-                </Form>
-              </div>
-            }
+                <Input 
+                  placeholder="Enter name" 
+                />
+              </Form.Item>
+              <Form.Item 
+                name="description" 
+                label="Description" 
+                rules={[{ required: true }]}
+              >
+                <TextArea 
+                  placeholder="Enter description" 
+                  autoSize={{ maxRows: 6 }}
+                />
+              </Form.Item>
+              <Form.Item 
+                name="content" 
+                label="Content" 
+                rules={[{ required: true }]}
+              >
+                <TextArea 
+                  placeholder="Enter content" 
+                  autoSize={{ maxRows: 10 }}
+                />
+              </Form.Item>
+              <Form.Item>
+                <Space align='end' size='middle'>
+                  <Button type="primary" htmlType="submit">
+                    Submit
+                  </Button>
+                  <Button onClick={onCancel}>
+                    Cancel
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
           </div>
-        </ConfigProvider>
-        <Modal open={!!modalContent && modalContent !== ''} onClose={() => setModalContent(null)}>
-          <p>{modalContent}</p>
-        </Modal>
+        }
       </div>
-    </Portal>
+      <Modal open={!!modalContent && modalContent !== ''} onClose={() => setModalContent(null)}>
+        <p>{modalContent}</p>
+      </Modal>
+    </div>
   );
 }
 

@@ -5,6 +5,8 @@ const isDevelopment = import.meta.env.MODE === 'development'
 
 const defaultApiBaseUrl = 'http://localhost:8000'
 
+export const github_url = 'https://github.com/AIDC-AI/ComfyUI-Copilot'
+
 export const config = {
   apiBaseUrl: isDevelopment 
     ? defaultApiBaseUrl 

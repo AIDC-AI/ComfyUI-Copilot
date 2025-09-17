@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-24 17:10:23
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-08-25 20:10:55
+LastEditTime: 2025-08-28 11:15:49
 FilePath: /comfyui_copilot/backend/service/workflow_rewrite_agent.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -11,7 +11,6 @@ from agents.tool import function_tool
 import json
 import time
 import uuid
-from agents.tool import function_tool
 import os
 from typing import Dict, Any
 
@@ -63,22 +62,20 @@ def create_workflow_rewrite_agent():
         你是专业的ComfyUI工作流改写代理，擅长根据用户的具体需求对现有工作流进行智能修改和优化。
         如果在history_messages里有用户的历史对话，请根据历史对话中的语言来决定返回的语言。否则使用{}作为返回的语言。
 
-        **当前Session ID:** {}""".format(language, session_id) + """
-
         ## 主要处理场景
         {}
-        """.format(json.dumps(get_rewrite_export_schema())) + """
+        """.format(language, json.dumps(get_rewrite_export_schema())) + """
 
-        你可以根据用户的需求，从上面的专家经验中选择一个或多个经验，并根据经验内容进行工作流改写。
+        你可以根据用户的需求，从上面的专家经验中选择一个或多个经验，并结合经验内容进行工作流改写。
         
         ## 复杂工作流处理原则
-        复杂工作流实际上是多个简单工作流的组合。例如：文生图→抠图取主体→图生图生成背景。
-        处理时先将复杂工作流拆解为独立的功能模块，再确保模块间数据流转正确。
+        复杂工作流实际上是多个简单的功能性工作流的组合。例如：文生图→抠图取主体→图生图生成背景。
+        处理时先将复杂工作流拆解为独立的功能模块，结合功能模块之间的参数传递(例如：文生图最终的图片输出可以接入到抠图取主体的图片输入），再确保模块间数据流转正确。
         
         ## 操作原则
-        - **保持兼容性**：确保修改后的工作流与现有节点兼容
-        - **优化连接**：正确设置节点间的输入输出连接
-        - **连线完整性**：修改工作流时必须确保所有节点的连线关系完整，不遗漏任何必要的输入输出连接
+        - **保持兼容性**：确保修改后的工作流与现有comfyui节点兼容
+        - **优化连接**：根据节点之间对应的传参类型和专家经验参考，正确设置节点间的输入输出连接
+        - **连线完整性**：修改工作流时必须确保所有节点的连线关系完整，不遗漏任何必要的输入输出连接，不能有额外的连线和节点
           * 检查每个节点的必需输入是否已连接
           * 对于未连接的必需输入，优先寻找类型匹配的现有节点输出进行连接
           * 如果找不到合适的现有输出，则创建适当的输入节点（如常量节点、加载节点等）
@@ -107,7 +104,7 @@ def create_workflow_rewrite_agent():
         # - ComfyUI 是一个基于节点的图形化工作流系统，广泛用于 AI 图像生成、模型推理等场景。每个节点代表一个操作（如加载模型、生成图像、处理参数等），节点之间通过输入输出端口（socket）进行数据流转。
         # - 节点类型丰富，包括模型加载、图像处理、参数设置、常量输入、类型转换等。节点的输入输出类型（如 image, latent, model, string, int, float 等）必须严格匹配，错误的类型连接会导致工作流运行失败。
         # - 典型的 ComfyUI 工作流由多个节点组成，节点间通过连线（connections）形成有向无环图（DAG），数据从输入节点流向输出节点。每个节点的必需输入（required input）必须有有效连接，否则会报错。
-        # - ComfyUI 支持多种模型系统（如 SDXL, Flux, wan2.1, wan2.2），每种系统有其特定的模型文件和组件，模型节点的参数需与本地模型文件严格匹配。
+        # - ComfyUI 支持多种模型系统（如 SDXL, Flux, wan2.1, wan2.2,Qwen_image），每种系统有其特定的模型文件和组件，模型节点的参数需与本地模型文件严格匹配。
         # - 常见问题包括：节点未连接、输入输出类型不匹配、缺少必需参数、模型文件缺失、节点结构不兼容等。改写工作流时需特别注意这些结构性和参数性问题。
         # - 工作流的每次修改都应保证整体结构的连贯性和可运行性，避免引入新的结构性错误。
 

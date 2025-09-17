@@ -2,16 +2,29 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-31 19:38:08
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-08-25 21:23:10
+LastEditTime: 2025-09-03 11:00:57
 FilePath: /comfyui_copilot/backend/agent_factory.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
+import os
+try:
+    from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
+    if not hasattr(__import__('agents'), 'Agent'):
+        raise ImportError
+except Exception:
+    # Give actionable guidance without crashing obscurely
+    raise ImportError(
+        "Detected incorrect or missing 'agents' package. "
+        "Please uninstall legacy RL 'agents' (and tensorflow/gym if pulled transitively) and install openai-agents. "
+        "Commands:\n"
+        "  python -m pip uninstall -y agents gym tensorflow\n"
+        "  python -m pip install -U openai-agents\n\n"
+        "Alternatively, keep both by setting COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 so this plugin prefers openai-agents."
+    )
 from dotenv import dotenv_values
 from .utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, get_comfyui_copilot_api_key, is_lmstudio_url
 from openai import AsyncOpenAI
 
-import os
 
 from agents._config import set_default_openai_api
 from agents.tracing import set_tracing_disabled
@@ -73,10 +86,35 @@ def create_agent(**kwargs) -> Agent:
         default_headers=default_headers,
     )
 
-    default_model_name = os.environ.get("OPENAI_MODEL", "gemini-2.5-flash")
-    model_name = kwargs.pop("model") or default_model_name
-    log.info(f"Agent Factory - Using model: {model_name}")
+<<<<<<< HEAD
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        default_headers=default_headers,
+    )
+
+    # Determine model with proper precedence:
+    # 1) Explicit selection from config (model_select from frontend)
+    # 2) Explicit kwarg 'model' (call-site override)
+    model_from_config = (config or {}).get("model_select")
+    model_from_kwargs = kwargs.pop("model", None)
+
+    model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
+
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
+=======
+    # Determine model with proper precedence:
+    # 1) Explicit selection from config (model_select from frontend)
+    # 2) Explicit kwarg 'model' (call-site override)
+    model_from_config = (config or {}).get("model_select")
+    model_from_kwargs = kwargs.pop("model", None)
+
+    model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
+>>>>>>> 52c42ce90fb3cd5466476796adba6c6e79d0de00
+    model = OpenAIChatCompletionsModel(model_name, openai_client=client)
+
+    # Safety: ensure no stray 'model' remains in kwargs to avoid duplicate kwarg errors
+    kwargs.pop("model", None)
 
     if config.get("max_tokens"):
         return Agent(model=model, model_settings=ModelSettings(max_tokens=config.get("max_tokens") or 8192), **kwargs)

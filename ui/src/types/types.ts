@@ -140,3 +140,9 @@ export interface TrackEventRequest {
   message_id?: string | null;
   data: any;
 }
+export interface UploadedImage {
+  id: string;
+  file: File;
+  preview: string;
+  url: string;
+}

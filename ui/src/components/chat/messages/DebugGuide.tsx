@@ -71,6 +71,14 @@ export function DebugGuide({ content, name = 'Assistant', avatar, onAddMessage, 
         onAddMessage?.(message);
         
         try {
+            // track debug trigger event
+            WorkflowChatAPI.trackEvent({
+                event_type: 'debug_trigger',
+                message_type: 'debug',
+                message_id: messageId,
+                data: {}
+            });
+
             // Save checkpoint before debugging
             await saveCheckpointBeforeDebug();
             

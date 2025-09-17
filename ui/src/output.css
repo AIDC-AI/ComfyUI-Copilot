@@ -1,6 +1,9 @@
 #comfyui-copilot-plugin,
-#comfyui-copilot-modal,
-#comfyui-copilot-rewrite-expert-modal {
+#comfyui-copilot-image-upload-modal,
+#comfyui-copilot-rewrite-expert-modal,
+#comfyui-copilot-model-download-modal,
+#comfyui-copilot-model-download,
+#comfyui-copilot-start-pop-view {
   *, ::before, ::after {
     --tw-border-spacing-x: 0;
     --tw-border-spacing-y: 0;
@@ -157,6 +160,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .pointer-events-auto {
+    pointer-events: auto;
+  }
   .\!visible {
     visibility: visible !important;
   }
@@ -191,6 +197,12 @@
     top: 0px;
     bottom: 0px;
   }
+  .\!left-auto {
+    left: auto !important;
+  }
+  .\!top-auto {
+    top: auto !important;
+  }
   .-bottom-1 {
     bottom: -0.25rem;
   }
@@ -215,6 +227,9 @@
   .bottom-3 {
     bottom: 0.75rem;
   }
+  .bottom-4 {
+    bottom: 1rem;
+  }
   .bottom-full {
     bottom: 100%;
   }
@@ -233,8 +248,8 @@
   .right-12 {
     right: 3rem;
   }
-  .right-14 {
-    right: 3.5rem;
+  .right-16 {
+    right: 4rem;
   }
   .right-2 {
     right: 0.5rem;
@@ -269,9 +284,6 @@
   .z-50 {
     z-index: 50;
   }
-  .z-\[1000\] {
-    z-index: 1000;
-  }
   .z-\[9999\] {
     z-index: 9999;
   }
@@ -289,6 +301,10 @@
   .mx-\[1px\] {
     margin-left: 1px;
     margin-right: 1px;
+  }
+  .mx-\[30px\] {
+    margin-left: 30px;
+    margin-right: 30px;
   }
   .mx-auto {
     margin-left: auto;
@@ -377,6 +393,9 @@
   .block {
     display: block;
   }
+  .inline-block {
+    display: inline-block;
+  }
   .inline {
     display: inline;
   }
@@ -437,6 +456,9 @@
   .h-3\.5 {
     height: 0.875rem;
   }
+  .h-3\/4 {
+    height: 75%;
+  }
   .h-3\/5 {
     height: 60%;
   }
@@ -458,8 +480,14 @@
   .h-\[24px\] {
     height: 24px;
   }
+  .h-\[280px\] {
+    height: 280px;
+  }
   .h-\[4\.5rem\] {
     height: 4.5rem;
+  }
+  .h-\[40px\] {
+    height: 40px;
   }
   .h-auto {
     height: auto;
@@ -527,6 +555,9 @@
   .w-2 {
     width: 0.5rem;
   }
+  .w-20 {
+    width: 5rem;
+  }
   .w-28 {
     width: 7rem;
   }
@@ -559,6 +590,12 @@
   }
   .w-\[100\%\] {
     width: 100%;
+  }
+  .w-\[240px\] {
+    width: 240px;
+  }
+  .w-\[300px\] {
+    width: 300px;
   }
   .w-\[35\%\] {
     width: 35%;
@@ -695,8 +732,14 @@
   .items-start {
     align-items: flex-start;
   }
+  .items-end {
+    align-items: flex-end;
+  }
   .items-center {
     align-items: center;
+  }
+  .justify-start {
+    justify-content: flex-start;
   }
   .justify-end {
     justify-content: flex-end;
@@ -781,6 +824,9 @@
   .whitespace-nowrap {
     white-space: nowrap;
   }
+  .whitespace-pre-line {
+    white-space: pre-line;
+  }
   .whitespace-pre-wrap {
     white-space: pre-wrap;
   }
@@ -792,6 +838,9 @@
   }
   .rounded {
     border-radius: 0.25rem;
+  }
+  .rounded-\[12px\] {
+    border-radius: 12px;
   }
   .rounded-full {
     border-radius: 9999px;
@@ -884,6 +933,9 @@
   }
   .border-gray-300 {
     border-color: color-mix(in srgb, var(--p-text-color) 30%, transparent);
+  }
+  .border-gray-600 {
+    border-color: color-mix(in srgb, var(--p-text-color) 60%, transparent);
   }
   .border-gray-700 {
     border-color: color-mix(in srgb, var(--p-text-color) 70%, transparent);
@@ -1408,6 +1460,16 @@
     --tw-shadow-colored: 0 0 12px 2px var(--tw-shadow-color);
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
   }
+  .shadow-\[inset_0_0_0_4px_rgba\(59\2c 130\2c 246\2c 0\.15\)\] {
+    --tw-shadow: inset 0 0 0 4px rgba(59,130,246,0.15);
+    --tw-shadow-colored: inset 0 0 0 4px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+  .shadow-\[inset_0_0_12px_2px_\#3b82f6\] {
+    --tw-shadow: inset 0 0 12px 2px #3b82f6;
+    --tw-shadow-colored: inset 0 0 12px 2px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
   .shadow-lg {
     --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
@@ -1481,7 +1543,8 @@
 
 /* Specifically reset basic elements within our scope to counter preflight:false */
 
-#comfyui-copilot-plugin {
+#comfyui-copilot-plugin,
+#comfyui-copilot-start-pop-view {
   /* Reset common elements */
   h1, h2, h3, h4, h5, h6, p, ul, ol, button, input, textarea, select {
     margin: 0;
@@ -1773,6 +1836,11 @@
   color: rgb(113 163 242 / var(--tw-text-opacity, 1)) !important;
 }
 
+.hover\:\!text-blue-500:hover {
+  --tw-text-opacity: 1 !important;
+  color: rgb(59 130 246 / var(--tw-text-opacity, 1)) !important;
+}
+
 .hover\:\!text-gray-600:hover {
   color: color-mix(in srgb, var(--p-text-color) 60%, transparent) !important;
 }
@@ -1865,6 +1933,10 @@
   --tw-scale-x: .95;
   --tw-scale-y: .95;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.disabled\:\!text-gray-300:disabled {
+  color: color-mix(in srgb, var(--p-text-color) 30%, transparent) !important;
 }
 
 .disabled\:opacity-50:disabled {
@@ -2061,11 +2133,6 @@
 
   .dark\:hover\:bg-gray-700:hover {
     background-color: color-mix(in srgb, var(--p-text-color) 70%, transparent);
-  }
-
-  .dark\:hover\:text-blue-300:hover {
-    --tw-text-opacity: 1;
-    color: rgb(147 197 253 / var(--tw-text-opacity, 1));
   }
 
   .dark\:hover\:text-gray-200:hover {

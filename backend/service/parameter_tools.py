@@ -1,6 +1,7 @@
 import json
 
 from agents.tool import function_tool
+from ..utils.modelscope_gateway import ModelScopeGateway
 from ..utils.request_context import get_session_id
 
 from ..utils.comfy_gateway import get_object_info_by_class
@@ -306,155 +307,175 @@ async def get_model_files(model_type: str = "checkpoints") -> str:
     except Exception as e:
         return json.dumps({"error": f"Failed to get model files: {str(e)}"})
 
-@function_tool
-def suggest_model_download(model_type: str, missing_model: str) -> str:
+
+def suggest_model_download_by_modelscope(model_name_keyword: str) -> str:
     """建议下载缺失的模型，执行一次即可结束流程返回结果"""
+    modelscope_gateway = ModelScopeGateway()
+    return modelscope_gateway.suggest(name=model_name_keyword)
+
+
+@function_tool
+def suggest_model_download(models_list: str = "") -> str:
+    """
+    建议下载缺失的模型，执行一次即可结束流程返回结果，支持批量处理
+    
+    Args:
+        models_list: 缺失模型列表的JSON字符串，格式为：
+                    '[{"model_type":"checkpoints","missing_model":"model.safetensors","model_name_keyword":"sd"}]'
+                    其中model_type: 模型类型，取值范围为checkpoints, clip, clip_vision, configs, controlnet, diffusers, diffusion_models, embeddings, gligen, hypernetworks, loras, photomaker, style_models, text_encoders, unet, upscale_models, vae, vae_approx
+                    missing_model: 缺失的模型名称
+                    model_name_keyword: 模型名称的关键词，用于模糊查询，短词优先，不要携带文件类型后缀
+        
+    Returns:
+        str: 建议下载的模型列表json字符串
+
+    """
     try:
-        # 尝试从缺失的模型名称推断模型类型
-        model_name_lower = missing_model.lower()
-        detected_type = model_type.lower()
+        if not models_list or not models_list.strip():
+            return json.dumps({"error": "models_list is required"})
         
-        # 自动检测模型类型
-        if "checkpoint" in model_name_lower or "ckpt" in model_name_lower or ".safetensors" in model_name_lower:
-            detected_type = "checkpoint"
-        elif "lora" in model_name_lower:
-            detected_type = "lora"
-        elif "controlnet" in model_name_lower or "control" in model_name_lower:
-            detected_type = "controlnet"
-        elif "vae" in model_name_lower:
-            detected_type = "vae"
-        elif "clip" in model_name_lower:
-            detected_type = "clip"
-        elif "unet" in model_name_lower:
-            detected_type = "unet"
-        elif "ipadapter" in model_name_lower or "ip-adapter" in model_name_lower:
-            detected_type = "ipadapter"
-        else:
-            detected_type = "checkpoint"
+        # 解析输入的模型列表
+        try:
+            # 尝试解析为列表
+            if models_list.strip().startswith('['):
+                models_data = json.loads(models_list)
+            else:
+                # 单个模型对象，转换为列表
+                models_data = [json.loads(models_list)]
+        except json.JSONDecodeError as e:
+            return json.dumps({"error": f"Invalid JSON format: {str(e)}"})
         
-        suggestions = {
-            "checkpoint": {
-                "message": f"Missing checkpoint model: {missing_model}",
-                "folder": "ComfyUI/models/checkpoints/",
-                "suggestions": [
-                    "1. Download from Hugging Face: https://huggingface.co/models",
-                    "2. Download from Civitai: https://civitai.com/",
-                    "3. Check model name spelling and file extension (.safetensors or .ckpt)",
-                ],
-                "common_models": [
-                    "sd_xl_base_1.0.safetensors",
-                    "v1-5-pruned-emaonly.safetensors",
-                    "sd_xl_refiner_1.0.safetensors"
-                ],
-                "download_links": {
-                    "SDXL Base": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
-                    "SD 1.5": "https://huggingface.co/runwayml/stable-diffusion-v1-5"
+        if not isinstance(models_data, list):
+            return json.dumps({"error": "models_list should be a list or single model object"})
+        
+        # 存储所有模型建议结果
+        all_model_suggestions = []
+        missing_models_info = []
+        failed_models = []
+        
+        # 遍历每个模型进行查询
+        for model_item in models_data:
+            if not isinstance(model_item, dict):
+                failed_models.append({"model": str(model_item), "error": "Invalid model format"})
+                continue
+                
+            model_type = model_item.get("model_type", "")
+            missing_model = model_item.get("missing_model", "")
+            model_name_keyword = model_item.get("model_name_keyword", "")
+            
+            if not model_type or not missing_model:
+                failed_models.append({
+                    "model": missing_model or "unknown", 
+                    "error": "model_type and missing_model are required"
+                })
+                continue
+            
+            # 如果没有提供关键词，从模型名中提取
+            if not (model_name_keyword and model_name_keyword.strip()):
+                missing_model_parts = missing_model.split(".")
+                if len(missing_model_parts) > 1:
+                    model_name_keyword = missing_model_parts[0]
+                else:
+                    model_name_keyword = missing_model
+            
+            # 记录缺失模型信息
+            missing_models_info.append({
+                "model_type": model_type,
+                "missing_model": missing_model,
+                "model_name_keyword": model_name_keyword
+            })
+            
+            # 优先使用modelscope检索模型
+            try:
+                result = suggest_model_download_by_modelscope(model_name_keyword)
+                if result and result.get("data") and len(result.get("data")) > 0:
+                    # 为每个结果添加上下文信息
+                    for suggestion in result["data"]:
+                        suggestion["source_model_type"] = model_type
+                        suggestion["source_missing_model"] = missing_model
+                        suggestion["source_keyword"] = model_name_keyword
+                        for item in result["data"]:
+                            item["source_model_type"] = model_type
+                    all_model_suggestions.extend(result["data"])
+                else:
+                    # ModelScope没有找到结果，记录失败信息
+                    failed_models.append({
+                        "model": missing_model,
+                        "model_type": model_type,
+                        "keyword": model_name_keyword,
+                        "error": "No models found in ModelScope"
+                    })
+            except Exception as e:
+                failed_models.append({
+                    "model": missing_model,
+                    "model_type": model_type,
+                    "keyword": model_name_keyword,
+                    "error": f"ModelScope query failed: {str(e)}"
+                })
+        
+        # 先按模型分组，每个模型取top3，然后再去重
+        grouped_suggestions = {}
+        for suggestion in all_model_suggestions:
+            source_model = suggestion.get("source_missing_model", "unknown")
+            if source_model not in grouped_suggestions:
+                grouped_suggestions[source_model] = []
+            grouped_suggestions[source_model].append(suggestion)
+        
+        # 每个模型取top3
+        top3_per_model = []
+        for model, suggestions in grouped_suggestions.items():
+            suggestions_top3 = suggestions[:3]
+            for item in suggestions_top3:
+                item["model_type"] = model_type
+            top3_per_model.extend(suggestions_top3)
+        
+        # 基于模型名称去重
+        seen_models = set()
+        unique_suggestions = []
+        for suggestion in top3_per_model:
+            # 使用Path和Name组合作为唯一标识
+            model_id = f"{suggestion.get('Path', '')}/{suggestion.get('Name', '')}"
+            if model_id not in seen_models:
+                seen_models.add(model_id)
+                unique_suggestions.append(suggestion)
+        
+        # 最终建议列表
+        top_suggestions = unique_suggestions
+        
+        # 构建返回结果
+        result = {
+            "success": True,
+            "total_requested": len(models_data),
+            "found_suggestions": len(top_suggestions),
+            "failed_count": len(failed_models),
+            "missing_models": missing_models_info,
+            "message": f"Found {len(top_suggestions)} model suggestions from ModelScope (top 3, deduplicated)",
+            "ext": [{
+                "type": "param_update",
+                "data": {
+                    "model_suggest": top_suggestions,
+                    "failed_models": failed_models,
+                    "summary": {
+                        "total_requested": len(models_data),
+                        "found_suggestions": len(top_suggestions),
+                        "failed_count": len(failed_models)
+                    }
                 }
-            },
-            "lora": {
-                "message": f"Missing LoRA model: {missing_model}",
-                "folder": "ComfyUI/models/loras/",
-                "suggestions": [
-                    "1. Download from Civitai: https://civitai.com/models?types=LORA",
-                    "2. Download from Hugging Face",
-                    "3. Ensure the file is in .safetensors format"
-                ],
-                "common_models": [
-                    "lcm-lora-sdxl.safetensors",
-                    "detail-tweaker-xl.safetensors"
-                ]
-            },
-            "controlnet": {
-                "message": f"Missing ControlNet model: {missing_model}",
-                "folder": "ComfyUI/models/controlnet/",
-                "suggestions": [
-                    "1. Download from Hugging Face ControlNet repository",
-                    "2. Match the ControlNet version with your base model (SD1.5 or SDXL)"
-                ],
-                "common_models": [
-                    "control_v11p_sd15_canny.pth",
-                    "control_v11p_sd15_openpose.pth",
-                    "diffusers_xl_canny_mid.safetensors"
-                ],
-                "download_links": {
-                    "ControlNet 1.1": "https://huggingface.co/lllyasviel/ControlNet-v1-1",
-                    "ControlNet SDXL": "https://huggingface.co/diffusers/controlnet-canny-sdxl-1.0"
-                }
-            },
-            "vae": {
-                "message": f"Missing VAE model: {missing_model}",
-                "folder": "ComfyUI/models/vae/",
-                "suggestions": [
-                    "1. VAE often comes with checkpoint models",
-                    "2. Download standalone VAE for better color reproduction"
-                ],
-                "common_models": [
-                    "vae-ft-mse-840000-ema-pruned.safetensors",
-                    "sdxl_vae.safetensors"
-                ]
-            },
-            "clip": {
-                "message": f"Missing CLIP model: {missing_model}",
-                "folder": "ComfyUI/models/clip/",
-                "suggestions": [
-                    "1. CLIP models are usually included with checkpoints",
-                    "2. For FLUX models, you need specific CLIP versions"
-                ],
-                "common_models": [
-                    "clip_l.safetensors",
-                    "t5xxl_fp16.safetensors"
-                ]
-            },
-            "unet": {
-                "message": f"Missing UNET model: {missing_model}",
-                "folder": "ComfyUI/models/unet/",
-                "suggestions": [
-                    "1. UNET models for FLUX can be downloaded from Hugging Face",
-                    "2. Check if you need fp8 or fp16 version based on your GPU"
-                ],
-                "common_models": [
-                    "flux1-dev.safetensors",
-                    "flux1-schnell.safetensors"
-                ]
-            },
-            "ipadapter": {
-                "message": f"Missing IPAdapter model: {missing_model}",
-                "folder": "ComfyUI/models/ipadapter/",
-                "suggestions": [
-                    "1. Download from the official IPAdapter repository",
-                    "2. Match the IPAdapter version with your base model"
-                ],
-                "download_links": {
-                    "IPAdapter": "https://huggingface.co/h94/IP-Adapter"
-                }
-            }
+            }]
         }
         
-        if detected_type in suggestions:
-            result = suggestions[detected_type]
-            result["detected_type"] = detected_type
-            result["missing_model"] = missing_model
-            
-            # 添加通用建议
-            result["general_tips"] = [
-                f"Place the downloaded file in: {result['folder']}",
-                "Restart ComfyUI after adding new models",
-                "Check file permissions if model is not detected"
+        # 如果没有找到任何建议，添加兜底信息
+        if not top_suggestions:
+            result["fallback_message"] = "No models found in ModelScope. Consider manual download from Hugging Face or Civitai."
+            result["general_suggestions"] = [
+                "1. Check model names and keywords for typos",
+                "2. Try broader keywords (e.g., 'stable-diffusion' instead of specific version)",
+                "3. Download from Hugging Face: https://huggingface.co/models",
+                "4. Download from Civitai: https://civitai.com/",
+                "5. Place models in appropriate ComfyUI/models/ subfolders"
             ]
-            
-            return json.dumps(result)
-        else:
-            return json.dumps({
-                "detected_type": "unknown",
-                "missing_model": missing_model,
-                "message": f"Missing model: {missing_model}",
-                "suggestions": [
-                    "1. Identify the model type from the node that requires it",
-                    "2. Download from appropriate sources",
-                    "3. Place in the correct ComfyUI/models/ subfolder",
-                    "4. Common folders: checkpoints/, loras/, vae/, controlnet/, clip/"
-                ]
-            })
+        
+        return json.dumps(result)
     
     except Exception as e:
         return json.dumps({"error": f"Failed to suggest model download: {str(e)}"})

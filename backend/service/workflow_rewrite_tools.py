@@ -4,8 +4,20 @@ import json
 import time
 from typing import Dict, Any, Optional
 
-from agents import RunContextWrapper
-from agents.tool import function_tool
+try:
+    from agents import RunContextWrapper
+    from agents.tool import function_tool
+    if not hasattr(__import__('agents'), 'Agent'):
+        # Ensure we are not importing RL agents
+        raise ImportError
+except Exception:
+    raise ImportError(
+        "Detected incorrect or missing 'agents' package while loading tools. "
+        "Please install 'openai-agents' and ensure this plugin prefers it. Commands:\n"
+        "  python -m pip uninstall -y agents gym tensorflow\n"
+        "  python -m pip install -U openai-agents\n\n"
+        "Or set COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 to prefer openai-agents without uninstalling."
+    )
 from .workflow_rewrite_agent_simple import rewrite_workflow_simple
 
 from ..dao.workflow_table import get_workflow_data, save_workflow_data, get_workflow_data_ui, get_workflow_data_by_id

@@ -1,8 +1,8 @@
 /*
  * @Author: 晴知 qingli.hql@alibaba-inc.com
  * @Date: 2024-12-12 21:28:03
- * @LastEditors: ai-business-hql qingli.hql@alibaba-inc.com
- * @LastEditTime: 2025-06-18 20:03:12
+ * @LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
+ * @LastEditTime: 2025-09-01 19:49:52
  * @FilePath: /comfyui_copilot/ui/src/components/chat/ApiKeyModal.tsx
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBK                            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                 <div className="mb-1"><strong>🔗 For LMStudio:</strong> http://localhost:1234/v1 (leave API key empty)</div>
@@ -22,6 +22,8 @@ import Modal from '../ui/Modal';
 import { debounce } from 'lodash';
 import useCountDown from '../../hooks/useCountDown';
 import LoadingIcon from '../ui/Loading-icon';
+import useLanguage from '../../hooks/useLanguage';
+import StartLink from '../ui/StartLink';
 interface ApiKeyModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -48,6 +50,8 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const [verifyingKey, setVerifyingKey] = useState(false);
     const [verificationResult, setVerificationResult] = useState<{success: boolean, message: string} | null>(null);
     const [rsaPublicKey, setRsaPublicKey] = useState<string | null>(null);
+
+    const { apikeymodel_title } = useLanguage();
 
     useEffect(() => {
         setApiKey(initialApiKey);
@@ -174,7 +178,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         
         // Always persist base URL (needed for LMStudio which may not require API key)
         localStorage.setItem('openaiBaseUrl', openaiBaseUrl);
-
+        
         // Save or clear OpenAI API key in localStorage
         if (openaiApiKey.trim()) {
             localStorage.setItem('openaiApiKey', openaiApiKey);
@@ -259,24 +263,19 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                             className='mb-4'
                         />
                     </div>
-                    {/* <div className="text-xs text-gray-600 dark:text-gray-300">
-                        <span>Don't have an API key? </span>
-                        <a 
-                            href="https://form.typeform.com/to/tkg91K8D"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                        >
-                            Click here to request one
-                        </a>
-                    </div> */}
+                    <StartLink className='flex justify-start items-end'>
+                        {apikeymodel_title}
+                        <svg viewBox="0 0 1024 1024" className="w-4 h-4" fill='currentColor'>
+                            <path d="M498.894518 100.608396c-211.824383 0-409.482115 189.041494-409.482115 422.192601 0 186.567139 127.312594 344.783581 295.065226 400.602887 21.13025 3.916193 32.039717-9.17701 32.039717-20.307512 0-10.101055 1.176802-43.343157 1.019213-78.596056-117.448946 25.564235-141.394311-49.835012-141.394311-49.835012-19.225877-48.805566-46.503127-61.793368-46.503127-61.793368-38.293141-26.233478 3.13848-25.611308 3.13848-25.611308 42.361807 2.933819 64.779376 43.443441 64.779376 43.443441 37.669948 64.574714 98.842169 45.865607 122.912377 35.094286 3.815909-27.262924 14.764262-45.918819 26.823925-56.431244-93.796246-10.665921-192.323237-46.90017-192.323237-208.673623 0-46.071292 16.498766-83.747379 43.449581-113.332185-4.379751-10.665921-18.805298-53.544497 4.076852-111.732757 0 0 35.46063-11.336186 116.16265 43.296085 33.653471-9.330506 69.783343-14.022365 105.654318-14.174837 35.869952 0.153496 72.046896 4.844332 105.753579 14.174837 80.606853-54.631248 116.00813-43.296085 116.00813-43.296085 22.935362 58.18826 8.559956 101.120049 4.180206 111.732757 27.052123 29.584806 43.443441 67.260893 43.443441 113.332185 0 162.137751-98.798167 197.850114-192.799074 208.262254 15.151072 13.088086 28.65155 38.804794 28.65155 78.17957 0 56.484456-0.459464 101.94381-0.459464 115.854635 0 11.235902 7.573489 24.381293 29.014824 20.2543C825.753867 867.330798 933.822165 709.10924 933.822165 522.700713c0-233.155201-224.12657-422.192601-434.927647-422.192601L498.894518 100.608396z">
+                            </path>
+                        </svg>
+                    </StartLink>
                 </div>
                 
                 {/* LLM Configuration */}
                 <CollapsibleCard 
                     title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">LLM Configuration (OpenAI / LMStudio / Custom)</h3>}
                     className='mb-4'
-                    defaultExpanded={true}
                 >
                     <div>
                         {/* API Key */}
