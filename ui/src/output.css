@@ -429,9 +429,6 @@
   .h-1 {
     height: 0.25rem;
   }
-  .h-1\/2 {
-    height: 50%;
-  }
   .h-10 {
     height: 2.5rem;
   }
@@ -458,6 +455,9 @@
   }
   .h-3\.5 {
     height: 0.875rem;
+  }
+  .h-3\/4 {
+    height: 75%;
   }
   .h-3\/5 {
     height: 60%;

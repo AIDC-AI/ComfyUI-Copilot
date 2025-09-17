@@ -50,7 +50,7 @@ const ModelDownloadModal: React.FC<IProps> = (props) => {
         backgroundColor: 'rgba(0,0,0,0.5)'
     }}
   >
-    <div className="relative bg-white rounded-xl p-6 w-1/2 h-1/2 flex flex-col">
+    <div className="relative bg-white rounded-xl p-6 w-1/2 h-3/4 flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl text-gray-900 font-semibold">Model Download</h2>
         <button 
