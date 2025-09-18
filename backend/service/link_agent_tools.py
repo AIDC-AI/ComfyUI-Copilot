@@ -7,7 +7,7 @@ from typing import Dict, Optional, List
 from agents.tool import function_tool
 from ..utils.request_context import get_session_id
 from ..dao.workflow_table import get_workflow_data, save_workflow_data
-from ..utils.comfy_gateway import get_object_info
+from ..utils.comfy_gateway import get_object_info, get_object_info_by_missed_class_list
 from ..utils.logger import log
 
 @function_tool
@@ -33,7 +33,28 @@ async def analyze_missing_connections() -> str:
         if not workflow_data:
             return json.dumps({"error": "No workflow data found for this session"})
         
+        log.info(f"analyze_missing_connections: workflow_data: {workflow_data}")
+
         object_info = await get_object_info()
+        
+        log.info(f"analyze_missing_connections: object_info: {object_info}")
+
+        # 缺失的node class
+        missed_node_class = []
+        # 缺失的object info
+        missed_object_info = {}
+        for node_id, node_data in workflow_data.items():
+            node_class = node_data.get("class_type")
+            log.info(f"node: node_id:{node_id}, node_class: {node_class}")
+            if node_class not in object_info:
+                log.info(f"missed node: node_id:{node_id}, node_class: {node_class}")
+                missed_node_class.append(node_class)
+                
+        log.info(f"analyze_missing_connections: missed_node_class: {missed_node_class}")
+
+        if missed_node_class:
+            missed_object_info = await get_object_info_by_missed_class_list(missed_node_class)
+            object_info.update(missed_object_info)
         
         analysis_result = {
             "missing_connections": [],

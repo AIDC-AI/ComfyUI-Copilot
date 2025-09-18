@@ -21,7 +21,7 @@ except Exception:
 from .workflow_rewrite_agent_simple import rewrite_workflow_simple
 
 from ..dao.workflow_table import get_workflow_data, save_workflow_data, get_workflow_data_ui, get_workflow_data_by_id
-from ..utils.comfy_gateway import get_object_info
+from ..utils.comfy_gateway import get_object_info, get_object_info_by_class_list
 from ..utils.request_context import get_rewrite_context, get_session_id
 from ..utils.logger import log
 
@@ -80,7 +80,7 @@ def get_current_workflow() -> str:
 async def get_node_info(node_class: str) -> str:
     """获取节点的详细信息，包括输入输出参数"""
     try:
-        object_info = await get_object_info()
+        object_info = await get_object_info_by_class_list([node_class])
         if node_class in object_info:
             node_info_str = json.dumps(object_info[node_class], ensure_ascii=False)
             get_rewrite_context().node_infos[node_class] = node_info_str
@@ -101,7 +101,7 @@ async def get_node_info(node_class: str) -> str:
 async def get_node_infos(node_class_list: list[str]) -> str:
     """获取多个节点的详细信息，包括输入输出参数。只做最小化有必要的查询，不要查询所有节点。尽量不要超过5个"""
     try:
-        object_info = await get_object_info()
+        object_info = await get_object_info_by_class_list(node_class_list)
         node_infos = {}
         for node_class in node_class_list:
             if node_class in object_info:
