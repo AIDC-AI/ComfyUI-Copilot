@@ -25,6 +25,7 @@ class GlobalState:
         self._lock = threading.RLock()
         self._state: Dict[str, Any] = {
             'LANGUAGE': 'en',  # Default language
+            'LAST_OPENAI_BASE_URL': None,
         }
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -93,6 +94,16 @@ def get_comfyui_copilot_api_key() -> Optional[str]:
 def set_comfyui_copilot_api_key(api_key: str) -> None:
     """Set the ComfyUI Copilot API key."""
     _global_state.set('comfyui_copilot_api_key', api_key)
+
+
+def set_last_openai_base_url(base_url: Optional[str]) -> None:
+    """Remember the last used OpenAI base URL (e.g., LMStudio), for fallback in chat."""
+    _global_state.set('LAST_OPENAI_BASE_URL', base_url)
+
+
+def get_last_openai_base_url() -> Optional[str]:
+    """Get the last remembered OpenAI base URL."""
+    return _global_state.get('LAST_OPENAI_BASE_URL')
 
 
 BACKEND_BASE_URL = "https://comfyui-copilot-server.onrender.com"

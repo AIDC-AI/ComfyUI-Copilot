@@ -234,11 +234,35 @@ async def invoke_chat(request):
     set_language(language)
     
     # 构建配置信息
+    openai_api_key = request.headers.get('Openai-Api-Key')
+    openai_base_url = request.headers.get('Openai-Base-Url')
+
+    # If base URL header missing, fall back to last successful one (e.g., LMStudio) or default LMStudio
+    if not openai_base_url:
+        from ..utils.globals import get_last_openai_base_url, LMSTUDIO_DEFAULT_BASE_URL
+        remembered = get_last_openai_base_url()
+        if remembered:
+            openai_base_url = remembered
+            log.info(f"Using remembered base URL for chat: {openai_base_url}")
+        else:
+            openai_base_url = LMSTUDIO_DEFAULT_BASE_URL
+            log.info(f"No base URL provided; defaulting to LMStudio: {openai_base_url}")
+
+    # If neither API key nor base URL is provided, assume local LMStudio by default
+    # This enables out-of-the-box local usage without requiring a cloud key
+    if not openai_api_key and not openai_base_url:
+        from ..utils.globals import LMSTUDIO_DEFAULT_BASE_URL
+        openai_base_url = LMSTUDIO_DEFAULT_BASE_URL
+        log.info(f"No OpenAI credentials provided; defaulting base URL to LMStudio: {openai_base_url}")
+    
+    log.info(f"Request headers - Openai-Api-Key: {'***' if openai_api_key else 'None'}")
+    log.info(f"Request headers - Openai-Base-Url: {openai_base_url}")
+    
     config = {
         "session_id": session_id,
         "workflow_checkpoint_id": workflow_checkpoint_id,
-        "openai_api_key": request.headers.get('Openai-Api-Key'),
-        "openai_base_url": request.headers.get('Openai-Base-Url'),
+        "openai_api_key": openai_api_key,
+        "openai_base_url": openai_base_url,
         "model_select": next((x['data'][0] for x in ext if x['type'] == 'model_select' and x.get('data')), None)
     }
     
@@ -267,6 +291,25 @@ async def invoke_chat(request):
     # 不再需要创建用户消息存储到后端，前端负责消息存储
 
     try:
+        # Validate API key presence unless using LMStudio/local base URL
+        from ..utils.globals import is_lmstudio_url
+        if not openai_api_key and not (openai_base_url and is_lmstudio_url(openai_base_url)):
+            warning_msg = (
+                "No OpenAI API key provided. Please click the gear icon (⚙️) to configure your key, "
+                "or set a local LMStudio base URL in settings."
+            )
+            log.error(warning_msg)
+            chat_response = ChatResponse(
+                session_id=session_id,
+                text=warning_msg,
+                finished=True,
+                type="message",
+                format="text",
+                ext=None
+            )
+            await response.write(json.dumps(chat_response).encode() + b"\n")
+            await response.write_eof()
+            return response
         # Call the MCP client to get streaming response with historical messages and image support
         # Pass OpenAI-formatted messages and processed images to comfyui_agent_invoke
         accumulated_text = ""

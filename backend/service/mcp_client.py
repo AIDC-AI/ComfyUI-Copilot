@@ -174,6 +174,7 @@ You must adhere to the following constraints to complete the task:
             # Enhanced retry mechanism for OpenAI streaming errors
             max_retries = 3
             retry_count = 0
+            last_non_retryable_error_message: Optional[str] = None
             
             async def process_stream_events(stream_result):
                 """Process stream events with enhanced error handling"""
@@ -340,6 +341,8 @@ You must adhere to the following constraints to complete the task:
                     else:
                         log.error(f"Non-retryable streaming error or max retries reached: {error_msg}")
                         log.error(f"Traceback: {traceback.format_exc()}")
+                        # Capture the error to surface it to the caller if no content was streamed
+                        last_non_retryable_error_message = error_msg
                         if isinstance(stream_error, RateLimitError):
                             default_error_msg = 'Rate limit exceeded, please try again later.'
                             error_body = stream_error.body
@@ -363,6 +366,10 @@ You must adhere to the following constraints to complete the task:
                         # Brief wait before retry for unexpected errors
                         await asyncio.sleep(1)
                         continue
+
+            # If we encountered a non-retryable error and produced no text, surface the error message
+            if last_non_retryable_error_message and not current_text:
+                current_text = last_non_retryable_error_message
 
             # Add detailed debugging info about tool results
             log.info(f"Total tool results: {len(tool_results)}")

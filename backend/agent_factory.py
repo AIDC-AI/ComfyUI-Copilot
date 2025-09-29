@@ -28,7 +28,7 @@ from openai import AsyncOpenAI
 
 from agents._config import set_default_openai_api
 from agents.tracing import set_tracing_disabled
-# from .utils.logger import log
+from .utils.logger import log
 
 # def load_env_config():
 #     """Load environment variables from .env.llm file"""
@@ -50,6 +50,8 @@ set_tracing_disabled(True)
 def create_agent(**kwargs) -> Agent:
     # 通过用户配置拿/环境变量
     config = kwargs.pop("config") if "config" in kwargs else {}
+    log.info(f"Agent Factory - Received config: {config}")
+    
     # 避免将 None 写入 headers
     session_id = (config or {}).get("session_id")
     default_headers = {}
@@ -66,12 +68,25 @@ def create_agent(**kwargs) -> Agent:
         if config.get("openai_api_key") and config.get("openai_api_key") != "":
             api_key = config.get("openai_api_key")
     
+    log.info(f"Agent Factory - Using base_url: {base_url}")
+    log.info(f"Agent Factory - Using api_key: {'***' if api_key else 'None'}")
+    
     # Check if this is LMStudio and adjust API key handling
     is_lmstudio = is_lmstudio_url(base_url)
+    log.info(f"Agent Factory - Is LMStudio: {is_lmstudio}")
+    
     if is_lmstudio and not api_key:
         # LMStudio typically doesn't require an API key, use a placeholder
         api_key = "lmstudio-local"
+        log.info("Agent Factory - Set LMStudio placeholder API key")
 
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        default_headers=default_headers,
+    )
+
+<<<<<<< HEAD
     client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
@@ -85,6 +100,17 @@ def create_agent(**kwargs) -> Agent:
     model_from_kwargs = kwargs.pop("model", None)
 
     model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
+
+    model = OpenAIChatCompletionsModel(model_name, openai_client=client)
+=======
+    # Determine model with proper precedence:
+    # 1) Explicit selection from config (model_select from frontend)
+    # 2) Explicit kwarg 'model' (call-site override)
+    model_from_config = (config or {}).get("model_select")
+    model_from_kwargs = kwargs.pop("model", None)
+
+    model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
+>>>>>>> 52c42ce90fb3cd5466476796adba6c6e79d0de00
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
 
     # Safety: ensure no stray 'model' remains in kwargs to avoid duplicate kwarg errors

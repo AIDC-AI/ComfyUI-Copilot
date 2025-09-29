@@ -1,5 +1,6 @@
 """
-Logging utility module using Python standard library logging with file location info.
+Logging utility module using Python standard library logging with file location info
+and robust Unicode handling for Windows consoles and log files.
 """
 
 import logging
@@ -8,6 +9,46 @@ import sys
 import os
 import inspect
 from datetime import datetime
+
+# Set UTF-8 encoding for Windows console output
+if os.name == 'nt':  # Windows
+    try:
+        # Set environment variable for UTF-8 encoding
+        os.environ['PYTHONIOENCODING'] = 'utf-8'
+        # Try to reconfigure stdout and stderr
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass  # Continue with default encoding if reconfiguration fails
+
+
+class SafeStreamHandler(logging.StreamHandler):
+    """Stream handler that safely handles Unicode encoding errors."""
+    
+    def emit(self, record):
+        try:
+            super().emit(record)
+        except UnicodeEncodeError:
+            # If encoding fails, try to emit with safe encoding
+            try:
+                # Temporarily modify the record to use safe encoding
+                original_msg = record.msg
+                record.msg = str(original_msg).encode('utf-8', errors='replace').decode('utf-8')
+                super().emit(record)
+                # Restore original message
+                record.msg = original_msg
+            except Exception:
+                # If that also fails, use a very basic approach
+                try:
+                    msg = f"[ENCODING ERROR] {record.levelname}: {str(record.msg)[:100]}..."
+                    if getattr(self, 'stream', None):
+                        self.stream.write(msg + self.terminator)
+                    self.flush()
+                except Exception:
+                    # Last resort: silently ignore
+                    pass
 
 
 class LocationFormatter(logging.Formatter):
@@ -22,7 +63,20 @@ class LocationFormatter(logging.Formatter):
             line_number = record.lineno if record.lineno else 0
             record.location = f"{filename}:{function_name}:{line_number}"
         
-        return super().format(record)
+        try:
+            return super().format(record)
+        except UnicodeEncodeError:
+            # Handle encoding errors by safely encoding problematic characters
+            original_msg = str(record.msg)
+            record.msg = original_msg.encode('utf-8', errors='replace').decode('utf-8')
+            # Also handle any other string attributes that might have encoding issues
+            if hasattr(record, 'location'):
+                record.location = str(record.location).encode('utf-8', errors='replace').decode('utf-8')
+            return super().format(record)
+        except Exception:
+            # Fallback for any other formatting errors
+            record.msg = f"[Encoding Error] {str(record.msg)[:200]}..."
+            return super().format(record)
 
 
 def setup_logger():
@@ -35,9 +89,16 @@ def setup_logger():
     if logger.handlers:
         return logger
     
-    # Console handler with color support
-    console_handler = logging.StreamHandler(sys.stderr)
+    # Console handler with UTF-8 encoding and safe Unicode handling
+    console_handler = SafeStreamHandler(sys.stderr)
     console_handler.setLevel(logging.DEBUG)
+    
+    # Set UTF-8 encoding for Windows compatibility
+    if hasattr(console_handler.stream, 'reconfigure'):
+        try:
+            console_handler.stream.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass  # Fallback to default encoding if reconfigure fails
     
     # Console formatter with colors (simple format for better compatibility)
     console_format = '%(asctime)s | %(levelname)-8s | %(location)s | %(message)s'
@@ -51,7 +112,8 @@ def setup_logger():
     file_handler = logging.handlers.RotatingFileHandler(
         os.path.join(log_dir, "comfyui_copilot.log"),
         maxBytes=10*1024*1024,  # 10MB
-        backupCount=7
+        backupCount=7,
+        encoding='utf-8'
     )
     file_handler.setLevel(logging.DEBUG)
     
@@ -93,11 +155,14 @@ class Logger:
             function_name = frame.f_code.co_name
             line_number = frame.f_lineno
             
+            # Safely encode the message to prevent Unicode issues
+            safe_message = safe_encode_message(message)
+            
             # Create a log record manually to ensure no duplicate processing
             if self._logger.isEnabledFor(level):
                 record = self._logger.makeRecord(
                     self._logger.name, level, frame.f_code.co_filename, line_number,
-                    message, args, None, function_name
+                    safe_message, args, None, function_name
                 )
                 record.location = f"{filename}:{function_name}:{line_number}"
                 
@@ -149,7 +214,17 @@ class Logger:
             del frame
 
 
-# Create default logger instance
+def safe_encode_message(message):
+    """Safely encode a message to handle Unicode characters."""
+    if isinstance(message, str):
+        try:
+            # Try to encode and decode to ensure it's safe
+            return message.encode('utf-8', errors='replace').decode('utf-8')
+        except Exception:
+            return str(message)[:500] + "..." if len(str(message)) > 500 else str(message)
+    return str(message)
+
+# Create a default logger instance for convenience
 log = Logger()
 
 # For backward compatibility and convenience
@@ -168,6 +243,6 @@ def get_logger(name=None):
 
 
 __all__ = [
-    'log', 'Logger', 'get_logger',
+    'log', 'Logger', 'get_logger', 'safe_encode_message',
     'debug', 'info', 'warning', 'warn', 'error', 'critical', 'exception'
 ]

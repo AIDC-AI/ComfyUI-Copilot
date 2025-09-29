@@ -209,6 +209,10 @@ async def debug_workflow_errors(workflow_data: Dict[str, Any]):
         if not session_id:
             session_id = str(uuid.uuid4())  # Fallback if no context
         
+        # Use user's selected model if available, otherwise fall back to WORKFLOW_MODEL_NAME
+        selected_model = config.get('model_select') if config else None
+        model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
+        
         # 1. 保存工作流数据到数据库
         log.info(f"Saving workflow data for session {session_id}")
         save_result = save_workflow_data(
@@ -250,16 +254,20 @@ async def debug_workflow_errors(workflow_data: Dict[str, Any]):
 **Note**: The workflow validation is done using ComfyUI's internal functions, not actual execution, so it's fast and safe.
 
 Start by validating the workflow to see its current state.""",
-            model=WORKFLOW_MODEL_NAME,
+            model=model_to_use,
             tools=[run_workflow, analyze_error_type, save_current_workflow],
             config={
                 "max_tokens": 8192
             }
         )
         
+        # Use user's selected model if available, otherwise fall back to WORKFLOW_MODEL_NAME
+        selected_model = config.get('model_select') if config else None
+        model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
+        
         workflow_bugfix_default_agent = create_agent(
             name="Workflow Bugfix Default Agent",
-            model=WORKFLOW_MODEL_NAME,
+            model=model_to_use,
             handoff_description="""
             I am the Workflow Bugfix Default Agent. I specialize in fixing structural issues in ComfyUI workflows.
             
@@ -308,7 +316,7 @@ Start by validating the workflow to see its current state.""",
         
         link_agent = create_agent(
             name="Link Agent",
-            model=WORKFLOW_MODEL_NAME,
+            model=model_to_use,
             handoff_description="""
             I am the Link Agent. I specialize in analyzing and fixing workflow connection issues.
             
@@ -399,7 +407,7 @@ Start by validating the workflow to see its current state.""",
 
         parameter_agent = create_agent(
             name="Parameter Agent",
-            model=WORKFLOW_MODEL_NAME,
+            model=model_to_use,
             handoff_description="""
             I am the Parameter Agent. I specialize in handling parameter-related errors in ComfyUI workflows.
             

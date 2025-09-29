@@ -88,9 +88,14 @@ ComfyUI API格式工作流是一个JSON对象，其中：
             api_key = get_comfyui_copilot_api_key() or ""
         )
 
+        # Use user's selected model if available, otherwise fall back to WORKFLOW_MODEL_NAME
+        config = get_config()
+        selected_model = config.get('model_select') if config else None
+        model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
+
         # 调用LLM
         completion = client.chat.completions.parse(
-            model=WORKFLOW_MODEL_NAME,
+            model=model_to_use,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": context_info}

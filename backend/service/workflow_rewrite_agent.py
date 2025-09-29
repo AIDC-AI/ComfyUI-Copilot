@@ -18,7 +18,7 @@ from ..dao.expert_table import list_rewrite_experts_short, get_rewrite_expert_by
 
 from ..agent_factory import create_agent
 from ..utils.globals import WORKFLOW_MODEL_NAME, get_language
-from ..utils.request_context import get_session_id
+from ..utils.request_context import get_session_id, get_config
 
 from ..service.workflow_rewrite_tools import *
 
@@ -42,10 +42,19 @@ def create_workflow_rewrite_agent():
     
     language = get_language()
     session_id = get_session_id() or "unknown_session"
+    config = get_config() or {}
+    
+    # Use user's selected model if available, otherwise fall back to WORKFLOW_MODEL_NAME
+    selected_model = config.get('model_select') if config else None
+    model_to_use = selected_model if selected_model else WORKFLOW_MODEL_NAME
+    
+    # Merge max_tokens into config
+    agent_config = {**config, "max_tokens": 8192} if config else {"max_tokens": 8192}
     
     return create_agent(
         name="Workflow Rewrite Agent",
-        model=WORKFLOW_MODEL_NAME,
+        model=model_to_use,
+        config=agent_config,
         handoff_description="""
         我是工作流改写代理，专门负责根据用户需求修改和优化当前画布上的ComfyUI工作流。
         """,
@@ -101,10 +110,7 @@ def create_workflow_rewrite_agent():
 
         始终以用户的实际需求为导向，提供专业、准确、高效的工作流改写服务。
         """,
-        tools=[get_rewrite_expert_by_name, get_current_workflow, get_node_info, update_workflow, remove_node],
-        config={
-            "max_tokens": 8192
-        }
+        tools=[get_rewrite_expert_by_name, get_current_workflow, get_node_info, update_workflow, remove_node]
     )
 
 # 注意：工作流改写代理现在需要在有session context的环境中创建
