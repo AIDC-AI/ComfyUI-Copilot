@@ -175,12 +175,14 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 
 Discord 社群：
 <div align="center">
-<img src='assets/discordqrcode.png' width='300'>
+<img width="20%" alt="image" src="https://github.com/user-attachments/assets/3f06ab60-5799-47ea-af7e-21f4e6671ad3" />
+
+  Discord: https://discord.gg/rb36gWG9Se
 </div>
 
 微信服务群：
 <div align="center">
-<img src='https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/qrcode.png' width='300'>
+<img src='https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/qrcode.png' width='20%'>
 </div>
 
 ## 📚 许可证
