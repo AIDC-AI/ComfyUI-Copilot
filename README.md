@@ -181,10 +181,10 @@ For any queries or suggestions, please feel free to contact: ComfyUI-Copilot@ser
   <img src="assets/qrcode.png" width="20%"/> 
    
   WeChat
-  
-  <img src="assets/discordqrcode.png" width="20%"/>
-  
-  Discord
+
+  <img width="20%" alt="image" src="https://github.com/user-attachments/assets/3f06ab60-5799-47ea-af7e-21f4e6671ad3" />
+
+  Discord: https://discord.gg/rb36gWG9Se
 </div>
 
 
@@ -196,6 +196,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://opens
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/ComfyUI-Copilot&type=Date)](https://star-history.com/#AIDC-AI/ComfyUI-Copilot&Date)
+
 
 
 
