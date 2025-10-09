@@ -239,6 +239,9 @@ async def invoke_chat(request):
         "workflow_checkpoint_id": workflow_checkpoint_id,
         "openai_api_key": request.headers.get('Openai-Api-Key'),
         "openai_base_url": request.headers.get('Openai-Base-Url'),
+        # Workflow LLM settings (optional, used by tools/agents that need a different LLM)
+        "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
+        "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
         "model_select": next((x['data'][0] for x in ext if x['type'] == 'model_select' and x.get('data')), None)
     }
     
@@ -504,7 +507,10 @@ async def invoke_debug(request):
         "session_id": session_id,
         "model": "gemini-2.5-flash",  # Default model for debug agents
         "openai_api_key": request.headers.get('Openai-Api-Key'),
-        "openai_base_url": request.headers.get('Openai-Base-Url', 'https://api.openai.com/v1'),
+        "openai_base_url": request.headers.get('Openai-Base-Url'),
+        # Workflow LLM settings (optional)
+        "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
+        "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
     }
 
     # 获取当前语言

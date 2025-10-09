@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-24 17:10:23
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-08-28 11:15:49
+LastEditTime: 2025-09-30 11:03:37
 FilePath: /comfyui_copilot/backend/service/workflow_rewrite_agent.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -14,11 +14,13 @@ import uuid
 import os
 from typing import Dict, Any
 
+from ..utils.key_utils import workflow_config_adapt
+
 from ..dao.expert_table import list_rewrite_experts_short, get_rewrite_expert_by_name_list
 
 from ..agent_factory import create_agent
 from ..utils.globals import WORKFLOW_MODEL_NAME, get_language
-from ..utils.request_context import get_session_id
+from ..utils.request_context import get_config, get_session_id
 
 from ..service.workflow_rewrite_tools import *
 
@@ -42,7 +44,9 @@ def create_workflow_rewrite_agent():
     
     language = get_language()
     session_id = get_session_id() or "unknown_session"
-    
+    config = get_config()
+    workflow_config_adapt(config)
+
     return create_agent(
         name="Workflow Rewrite Agent",
         model=WORKFLOW_MODEL_NAME,

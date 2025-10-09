@@ -1,6 +1,7 @@
 '''
 Debug Agent for ComfyUI Workflow Error Analysis
 '''
+from ..utils.key_utils import workflow_config_adapt
 from ..agent_factory import create_agent
 from agents.items import ItemHelpers
 from agents.run import Runner
@@ -205,6 +206,7 @@ async def debug_workflow_errors(workflow_data: Dict[str, Any]):
         # Get session_id and config from request context
         session_id = get_session_id()
         config = get_config()
+        workflow_config_adapt(config)
         
         if not session_id:
             session_id = str(uuid.uuid4())  # Fallback if no context
@@ -253,7 +255,8 @@ Start by validating the workflow to see its current state.""",
             model=WORKFLOW_MODEL_NAME,
             tools=[run_workflow, analyze_error_type, save_current_workflow],
             config={
-                "max_tokens": 8192
+                "max_tokens": 8192,
+                **config
             }
         )
         
@@ -302,7 +305,8 @@ Start by validating the workflow to see its current state.""",
             tools=[get_current_workflow, get_node_info, update_workflow],
             handoffs=[agent],
             config={
-                "max_tokens": 8192
+                "max_tokens": 8192,
+                **config
             }
         )
         
@@ -393,7 +397,8 @@ Start by validating the workflow to see its current state.""",
                    get_current_workflow, get_node_info],
             handoffs=[agent],
             config={
-                "max_tokens": 8192
+                "max_tokens": 8192,
+                **config
             }
         )
 
@@ -487,7 +492,8 @@ Start by validating the workflow to see its current state.""",
                 suggest_model_download, update_workflow_parameter, get_current_workflow],
             handoffs=[agent],
             config={
-                "max_tokens": 8192
+                "max_tokens": 8192,
+                **config
             }
         )
 
@@ -692,16 +698,9 @@ Start by validating the workflow to see its current state.""",
             
     except Exception as e:
         log.error(f"Error in debug_workflow_errors: {str(e)}")
-        error_message = current_text + f"\n\n× Error occurred during debugging: {str(e)}\n\n"
+        error_message = f"\n\n× Error occurred during debugging: {str(e)}\n\n"
 
-        # Include workflow_update ext if captured from tools before the error
-        final_error_ext = None
-        if 'workflow_update_ext' in locals() and workflow_update_ext:
-            final_error_ext = [workflow_update_ext]
-            log.info(f"-- Including latest workflow_update ext in error response")
-        
         ext_with_finished = {
-            "data": final_error_ext,
             "finished": True
         }
         yield (error_message, ext_with_finished)
