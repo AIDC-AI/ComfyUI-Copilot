@@ -11,11 +11,12 @@ import json
 from typing import Dict, Any, Optional
 import asyncio
 from pydantic import BaseModel
+from ..utils.key_utils import workflow_config_adapt
 from openai import OpenAI
 
 from ..agent_factory import create_agent
 from ..utils.globals import WORKFLOW_MODEL_NAME, get_comfyui_copilot_api_key, LLM_DEFAULT_BASE_URL
-from ..utils.request_context import get_rewrite_context, RewriteContext
+from ..utils.request_context import get_config, get_rewrite_context, RewriteContext
 from ..utils.logger import log
 
 
@@ -81,11 +82,12 @@ ComfyUI API格式工作流是一个JSON对象，其中：
   "workflow_data": "这里是完整的工作流JSON字符串"
 }
 """
-
+        config = get_config()
+        workflow_config_adapt(config)
         # 创建OpenAI客户端
         client = OpenAI(
-            base_url = LLM_DEFAULT_BASE_URL,
-            api_key = get_comfyui_copilot_api_key() or ""
+            base_url = config.get("openai_base_url") or LLM_DEFAULT_BASE_URL,
+            api_key = config.get("openai_api_key") or get_comfyui_copilot_api_key() or ""
         )
 
         # 调用LLM
