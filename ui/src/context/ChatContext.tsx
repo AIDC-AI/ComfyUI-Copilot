@@ -130,7 +130,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             percentage: response.percentage,
             status: response.status
           }
-          if (response.status === 'completed') {
+          if (response.status === 'completed' || response.status === 'failed') {
             currentDownloadingId?.current?.splice(currentDownloadingId?.current?.indexOf(response.id), 1)
           }
         }
@@ -158,7 +158,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const getDownloadProgress = async () => {
     const response = await fetch('/api/download-progress')
     const res = await response.json()
-    console.log('--res->', res)
     if (res?.data?.downloads?.length > 0) {
       addDownloadId(res.data.downloads)
     }
@@ -175,9 +174,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.messages, state.sessionId]);
 
-  useEffect(() => {
-    console.log('--->', app.extensionManager.setting.get('Comfy.ColorPalette'))
-  }, [app.extensionManager.setting.get('Comfy.ColorPalette')])
+  // useEffect(() => {
+  //   console.log('--->', app.extensionManager.setting.get('Comfy.ColorPalette'))
+  // }, [app.extensionManager.setting.get('Comfy.ColorPalette')])
 
   return (
     <ConfigProvider

@@ -202,7 +202,7 @@ const ModelOption: React.FC<IProps> = (props) => {
           {
             (!!modelDownloadMap[record.Id] && modelDownloadMap[record.Id].status !== 'failed') ? renderDownloadProgress(modelDownloadMap[record.Id]?.status) : <button 
               className="text-gray-900 hover:!text-blue-500 disabled:!text-gray-300 flex justify-center items-center bg-transparent border-none"
-              disabled={!!modelDownloadMap[record.Id]}
+              // disabled={!!modelDownloadMap[record.Id]}
               onClick={() => handleDownload(record.Id, `${record.Path}/${record.Name}`, record?.model_type || '')}
             >
               <svg viewBox="0 0 1071 1024" className="w-5 h-5" fill="currentColor">
