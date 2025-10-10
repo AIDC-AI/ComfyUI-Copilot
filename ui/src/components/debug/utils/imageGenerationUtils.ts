@@ -114,7 +114,7 @@ export const handleStartGeneration = async (
     // Each combination represents all parameters for a single image generation
     for (const combination of paramCombinations) {
       const response = await queuePrompt(combination);
-      if(response.prompt_id) {
+      if (response.prompt_id) {
           prompt_ids.push(response.prompt_id);
       } else {
           console.error("Failed to get prompt_id from response:", response);
@@ -186,9 +186,10 @@ export const pollForImages = async (
     console.log("Another polling session has started, stopping this one");
     return;
   }
-  
-  // Check if timeout has been reached
-  if (Date.now() - startTime > timeoutDuration) {
+  // has avaiable promptId，if not, stop polling
+  const hasAvailablePromptId = prompt_ids.some(id => !!id && id !== '')
+  // Check if timeout has been reached or has no avaiable promptId
+  if (Date.now() - startTime > timeoutDuration || !hasAvailablePromptId) {
     console.log("Timeout reached while waiting for images");
     if (pollingSessionIdRef.current === sessionId) {
       updateState(StateKey.IsProcessing, false);
@@ -220,7 +221,7 @@ export const pollForImages = async (
   }
   
   let completedImagesCount = 0;
-  
+
   // Check each prompt id to see if images are ready
   for (let i = 0; i < prompt_ids.length; i++) {
     const promptId = prompt_ids[i];
@@ -234,10 +235,10 @@ export const pollForImages = async (
         // If we have an image URL, update in our array
         newImages[i] = {
           ...newImages[i],
-          url: imageUrl
+          url: imageUrl || ''
         };
-        completedImagesCount++;
       }
+      completedImagesCount++;
     } catch (error) {
       console.error(`Error fetching image for prompt ID ${promptId}:`, error);
     }
@@ -247,7 +248,7 @@ export const pollForImages = async (
   updateState(StateKey.GeneratedImages, [...newImages]);
   updateState(StateKey.CompletedCount, completedImagesCount)
   
-  // Check if all images are generated
+  // Check if all images are generated or failed
   if (completedImagesCount === prompt_ids.length) {
     console.log("All images have been generated!");
     if (pollingSessionIdRef.current === sessionId) {

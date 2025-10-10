@@ -12,7 +12,7 @@ interface PortalProps {
 
 export function Portal({ children, container = document.body, className = '' }: PortalProps) {
     const [mounted, setMounted] = useState(false);
-    console.log('container-->', container)
+    
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);

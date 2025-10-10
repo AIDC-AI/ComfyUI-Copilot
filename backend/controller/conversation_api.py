@@ -146,7 +146,10 @@ class DownloadProgressCallback:
                 progress_dict = download_progress[self.download_id]
                 progress_dict["status"] = self.status
                 progress_dict["progress"] = self.file_size if success else self.progress
-                progress_dict["percentage"] = 100.0 if success else (self.progress / self.file_size) * 100
+                if self.file_size > 0:
+                    progress_dict["percentage"] = 100.0 if success else (self.progress / self.file_size) * 100
+                else:
+                    progress_dict["percentage"] = 0.0
                 progress_dict["total_time"] = round(total_time, 2)
                 progress_dict["error_message"] = self.error_message
 
