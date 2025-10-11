@@ -206,11 +206,7 @@ async def debug_workflow_errors(workflow_data: Dict[str, Any]):
         # Get session_id and config from request context
         session_id = get_session_id()
         config = get_config()
-<<<<<<< HEAD
         config = workflow_config_adapt(config)
-=======
-        workflow_config_adapt(config)
->>>>>>> main
         
         if not session_id:
             session_id = str(uuid.uuid4())  # Fallback if no context

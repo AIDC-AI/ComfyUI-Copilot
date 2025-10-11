@@ -45,11 +45,7 @@ def create_workflow_rewrite_agent():
     language = get_language()
     session_id = get_session_id() or "unknown_session"
     config = get_config()
-<<<<<<< HEAD
     config = workflow_config_adapt(config)
-=======
-    workflow_config_adapt(config)
->>>>>>> main
 
     return create_agent(
         name="Workflow Rewrite Agent",
@@ -111,7 +107,8 @@ def create_workflow_rewrite_agent():
         """,
         tools=[get_rewrite_expert_by_name, get_current_workflow, get_node_info, update_workflow, remove_node],
         config={
-            "max_tokens": 8192
+            "max_tokens": 8192,
+            ** config
         }
     )
 
