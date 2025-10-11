@@ -60,7 +60,8 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 </div>
 
 ---
-
+<div id="tutorial-start" />
+    
 ## 🔥 核心功能（V2.0.0）
 
 - 1. 💎 **生成第一版工作流**：根据您的文字描述，提供符合您需求的工作流，返回3个知识库里的优质工作流和1个AI生成的工作流，您可以一键导入到ComfyUI中，开始生图。
@@ -163,6 +164,7 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 我们的项目依赖于一些外部接口，服务部署在新加坡，可能需要您使用科学上网工具哦。
 
 ---
+<div id="tutorial-end" />
 
 ## 🤝 贡献
 

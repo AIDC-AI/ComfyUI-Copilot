@@ -1,4 +1,3 @@
-
 from copy import deepcopy
 
 def workflow_config_adapt(config: dict) -> dict:

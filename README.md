@@ -9,9 +9,9 @@
 <h4 align="center">
 
 <div align="center">
-<img src="https://img.shields.io/badge/Version-1.0.0-blue.svg" alt="版本"> 
+<img src="https://img.shields.io/badge/Version-2.0.0-blue.svg" alt="版本"> 
 <img src="https://img.shields.io/github/stars/AIDC-AI/ComfyUI-Copilot?color=yellow" alt="星标">
-  <a href="https://discord.gg/7H9dMCvuMp">
+  <a href="https://discord.gg/rb36gWG9Se">
     <img src="https://img.shields.io/badge/Discord-%20%235462eb?logo=discord&logoColor=%20%23f5f5f5" alt="Discord">
   </a>    
 <a href="https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/qrcode.png">
@@ -67,7 +67,8 @@ We now cover the entire workflow lifecycle, including generation, debugging, rew
 </div>
 
 ---
-
+<div id="tutorial-start" />
+  
 ## 🔥 Core Features (V2.0.0)
 
 - 1. 💎 **Generate First Version Workflow**: Based on your text description, we provide workflows that meet your needs, returning 3 high-quality workflows from our library and 1 AI-generated workflow. You can import them into ComfyUI with one click to start generating images.
@@ -167,6 +168,7 @@ Click the * button, enter your email address in the popup window, and the API Ke
 This project is continuously updated. Please update to the latest code to get new features. You can use git pull to get the latest code, or click "Update" in the ComfyUI Manager plugin.
 
 ---
+<div id="tutorial-end" />
 
 ## 🤝 Contributions
 
@@ -196,6 +198,8 @@ This project is licensed under the MIT License - see the [LICENSE](https://opens
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/ComfyUI-Copilot&type=Date)](https://star-history.com/#AIDC-AI/ComfyUI-Copilot&Date)
+
+
 
 
 
