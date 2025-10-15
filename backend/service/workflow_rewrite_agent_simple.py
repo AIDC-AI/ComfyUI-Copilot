@@ -83,7 +83,8 @@ ComfyUI API格式工作流是一个JSON对象，其中：
 }
 """
         config = get_config()
-        workflow_config_adapt(config)
+        config = workflow_config_adapt(config)
+
         # 创建OpenAI客户端
         client = OpenAI(
             base_url = config.get("openai_base_url") or LLM_DEFAULT_BASE_URL,

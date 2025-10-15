@@ -2,11 +2,11 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-09-02 17:11:50
+LastEditTime: 2025-10-11 16:32:59
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from ..utils.globals import BACKEND_BASE_URL
+from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key
 from .. import core
 import asyncio
 import os
@@ -76,13 +76,11 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             params= {
                 "url": BACKEND_BASE_URL + "/mcp-server/mcp",
                 "timeout": 300.0,
+                "headers": {"X-Session-Id": session_id, "Authorization": f"Bearer {get_comfyui_copilot_api_key()}"}
             },
             cache_tools_list=True,
             client_session_timeout_seconds=300.0
         ) as server:
-            # tools = await server.list_tools()
-            
-            # Model selection is handled inside create_agent via config / kwargs precedence
             
             # 创建workflow_rewrite_agent实例 (session_id通过context获取)
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
