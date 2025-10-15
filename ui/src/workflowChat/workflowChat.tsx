@@ -39,6 +39,7 @@ import useLanguage from "../hooks/useLanguage";
 import StartLink from "../components/ui/StartLink";
 import StartPopView from "../components/ui/StartPopView";
 import { LocalStorageKeys, setLocalStorage } from "../utils/localStorageManager";
+import TabButton from "../components/ui/TabButton";
 
 const BASE_URL = config.apiBaseUrl
 
@@ -149,26 +150,26 @@ const ParameterDebugTab = () => {
 };
 
 // Tab component
-const TabButton = ({ 
-    active, 
-    onClick, 
-    children 
-}: { 
-    active: boolean; 
-    onClick: () => void; 
-    children: React.ReactNode 
-}) => (
-    <button
-        onClick={onClick}
-        className={`px-4 py-2 font-medium text-xs transition-colors duration-200 border-b-2 ${
-            active 
-                ? "text-[#71A3F2] border-[#71A3F2]" 
-                : "text-gray-600 border-transparent hover:!text-[#71A3F2] hover:!border-[#71A3F2]"
-        }`}
-    >
-        {children}
-    </button>
-);
+// const TabButton = ({ 
+//     active, 
+//     onClick, 
+//     children 
+// }: { 
+//     active: boolean; 
+//     onClick: () => void; 
+//     children: React.ReactNode 
+// }) => (
+//     <button
+//         onClick={onClick}
+//         className={`px-4 py-2 font-medium text-xs transition-colors duration-200 border-b-2 ${
+//             active 
+//                 ? "text-[#71A3F2] border-[#71A3F2]" 
+//                 : "text-gray-600 border-transparent hover:!text-[#71A3F2] hover:!border-[#71A3F2]"
+//         }`}
+//     >
+//         {children}
+//     </button>
+// );
 
 export default function WorkflowChat({ onClose, visible = true, triggerUsage = false, onUsageTriggered }: WorkflowChatProps) {
     const { state, dispatch, showcasIng, abortControllerRef } = useChatContext();

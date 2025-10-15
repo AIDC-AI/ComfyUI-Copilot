@@ -19,11 +19,12 @@ import Input from '../ui/Input';
 import CollapsibleCard from '../ui/CollapsibleCard';
 import { config } from '../../config';
 import Modal from '../ui/Modal';
-import { debounce } from 'lodash';
+import { debounce, set } from 'lodash';
 import useCountDown from '../../hooks/useCountDown';
 import LoadingIcon from '../ui/Loading-icon';
 import useLanguage from '../../hooks/useLanguage';
 import StartLink from '../ui/StartLink';
+import TabButton from '../ui/TabButton';
 interface ApiKeyModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -33,6 +34,11 @@ interface ApiKeyModalProps {
 }
 
 const BASE_URL = config.apiBaseUrl
+
+const TAB_LIST = [
+    'OpenAI',
+    'LMStudio'
+]
 
 export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onConfigurationUpdated }: ApiKeyModalProps) {
     const [apiKey, setApiKey] = useState(initialApiKey);
@@ -56,7 +62,21 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const [workflowLLMBaseUrl, setWorkflowLLMBaseUrl] = useState('');
     const [showWorkflowLLMApiKey, setShowWorkflowLLMApiKey] = useState(false);
 
+    const [activeTab, setActiveTab] = useState<string>(TAB_LIST[0]);
+    const [tabStrMap, setTabStrMap] = useState<Record<string, Record<string, string>> | null>(null);
+
     const { apikeymodel_title } = useLanguage();
+
+    useEffect(() => {
+        const map: Record<string, Record<string, string>> = {}
+        TAB_LIST?.forEach((tab) => {
+            map[tab] = {
+                openaiApiKey: '',
+                openaiBaseUrl: '',
+            }
+        })
+        setTabStrMap(map);
+    }, [])
 
     useEffect(() => {
         setApiKey(initialApiKey);
@@ -153,6 +173,12 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         }, 500), 
         []
     );
+
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        setOpenaiApiKey(tabStrMap?.[tab]?.openaiApiKey || '');
+        setOpenaiBaseUrl(tabStrMap?.[tab]?.openaiBaseUrl || '');
+    }
 
     const handleSendEmail = async () => {
         if (!email || email === '' || !isEmailValid)
@@ -315,22 +341,40 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                     <div>
                         {/* API Key */}
                         <div className="mb-4">
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {
+                                TAB_LIST?.map((tab) => <TabButton 
+                                    active={activeTab === tab}
+                                    onClick={() => handleTabChange(tab)}
+                                >
+                                    {tab}
+                                </TabButton>)
+                            }
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-2 mb-2">
                                 API Key (Optional for LMStudio)
                             </label>
                             <div className="relative">
                                 <input
                                     type={showOpenaiApiKey ? "text" : "password"}
                                     value={openaiApiKey}
-                                    onChange={(e) => setOpenaiApiKey(e.target.value)}
+                                    disabled={activeTab === 'LMStudio'}
+                                    onChange={(e) => {
+                                        setTabStrMap(prev => ({
+                                            ...prev,
+                                            [activeTab]: {
+                                                ...prev?.[activeTab],
+                                                openaiApiKey: e.target.value
+                                            }
+                                        }))
+                                        setOpenaiApiKey(e.target.value)
+                                    }}
                                     placeholder="Enter your OpenAI API key (leave empty for LMStudio)"
-                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
-                                    bg-gray-50 dark:bg-gray-700 
+                                    className={`w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
+                                    ${activeTab === 'OpenAI' ? 'bg-gray-50 dark:bg-gray-700' : 'bg-gray-200 dark:bg-gray-700'}
                                     text-gray-900 dark:text-white
                                     placeholder-gray-500 dark:placeholder-gray-400
                                     focus:border-blue-500 dark:focus:border-blue-400 
                                     focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
-                                    focus:outline-none"
+                                    focus:outline-none`}
                                 />
                                 <button
                                     type="button"
@@ -360,10 +404,19 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                             <input
                                 type="text"
                                 value={openaiBaseUrl}
-                                onChange={(e) => setOpenaiBaseUrl(e.target.value)}
+                                onChange={(e) => {
+                                    setTabStrMap(prev => ({
+                                        ...prev,
+                                        [activeTab]: {
+                                            ...prev?.[activeTab],
+                                            openaiBaseUrl: e.target.value
+                                        }
+                                    }))
+                                    setOpenaiBaseUrl(e.target.value)
+                                }}
                                 placeholder="https://api.openai.com/v1 or http://localhost:1234/v1 for LMStudio"
                                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
-                                bg-gray-50 dark:bg-gray-700 
+                                bg-gray-50 dark:bg-gray-700
                                 text-gray-900 dark:text-white
                                 placeholder-gray-500 dark:placeholder-gray-400
                                 focus:border-blue-500 dark:focus:border-blue-400 
