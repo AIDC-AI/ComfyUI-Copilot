@@ -6,7 +6,7 @@ LastEditTime: 2025-10-11 16:32:59
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from ..utils.globals import BACKEND_BASE_URL
+from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key
 from .. import core
 import asyncio
 import os
@@ -76,6 +76,7 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             params= {
                 "url": BACKEND_BASE_URL + "/mcp-server/mcp",
                 "timeout": 300.0,
+                "headers": {"X-Session-Id": session_id, "Authorization": f"Bearer {get_comfyui_copilot_api_key()}"}
             },
             cache_tools_list=True,
             client_session_timeout_seconds=300.0
