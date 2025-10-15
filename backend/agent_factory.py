@@ -84,7 +84,7 @@ def create_agent(**kwargs) -> Agent:
     model_from_config = (config or {}).get("model_select")
     model_from_kwargs = kwargs.pop("model", None)
 
-    model_name = model_from_kwargs or model_from_config or "gemini-2.5-flash"
+    model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
 
     # Safety: ensure no stray 'model' remains in kwargs to avoid duplicate kwarg errors

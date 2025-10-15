@@ -24,6 +24,7 @@ import useCountDown from '../../hooks/useCountDown';
 import LoadingIcon from '../ui/Loading-icon';
 import useLanguage from '../../hooks/useLanguage';
 import StartLink from '../ui/StartLink';
+import { WorkflowChatAPI } from '../../apis/workflowChatApi';
 interface ApiKeyModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -55,6 +56,11 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const [workflowLLMApiKey, setWorkflowLLMApiKey] = useState('');
     const [workflowLLMBaseUrl, setWorkflowLLMBaseUrl] = useState('');
     const [showWorkflowLLMApiKey, setShowWorkflowLLMApiKey] = useState(false);
+    const [workflowLLMModel, setWorkflowLLMModel] = useState('');
+    const [verifyingWorkflowLLM, setVerifyingWorkflowLLM] = useState(false);
+    const [workflowVerificationResult, setWorkflowVerificationResult] = useState<{success: boolean, message: string} | null>(null);
+    const [workflowLLMModels, setWorkflowLLMModels] = useState<string[]>([]);
+    const [workflowLLMModelsLoading, setWorkflowLLMModelsLoading] = useState(false);
 
     const { apikeymodel_title } = useLanguage();
 
@@ -66,6 +72,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         const savedOpenaiBaseUrl = localStorage.getItem('openaiBaseUrl');
         const savedWorkflowLLMApiKey = localStorage.getItem('workflowLLMApiKey');
         const savedWorkflowLLMBaseUrl = localStorage.getItem('workflowLLMBaseUrl');
+        const savedWorkflowLLMModel = localStorage.getItem('workflowLLMModel');
         
         if (savedOpenaiApiKey) {
             setOpenaiApiKey(savedOpenaiApiKey);
@@ -79,6 +86,9 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         }
         if (savedWorkflowLLMBaseUrl) {
             setWorkflowLLMBaseUrl(savedWorkflowLLMBaseUrl);
+        }
+        if (savedWorkflowLLMModel) {
+            setWorkflowLLMModel(savedWorkflowLLMModel);
         }
         
         // Fetch RSA public key
@@ -145,6 +155,59 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         }
     };
 
+    const handleVerifyWorkflowLLMKey = async () => {
+        const isLMStudio = workflowLLMBaseUrl.toLowerCase().includes('localhost') || 
+                           workflowLLMBaseUrl.toLowerCase().includes('127.0.0.1') ||
+                           workflowLLMBaseUrl.includes(':1234') ||
+                           workflowLLMBaseUrl.includes(':1235');
+
+        if (!workflowLLMApiKey.trim() && !isLMStudio) {
+            setWorkflowVerificationResult({
+                success: false,
+                message: 'Please enter an API key or use LMStudio URL (localhost:1234)'
+            });
+            return;
+        }
+
+        setVerifyingWorkflowLLM(true);
+        setWorkflowVerificationResult(null);
+        try {
+            const isValid = await verifyOpenAiApiKey(workflowLLMApiKey, workflowLLMBaseUrl);
+            setWorkflowVerificationResult({
+                success: isValid,
+                message: isValid ? 
+                    (isLMStudio ? 'LMStudio connection successful!' : 'API key is valid!') : 
+                    (isLMStudio ? 'LMStudio connection failed. Please check if LMStudio server is running.' : 'Invalid API key. Please check and try again.')
+            });
+        } catch (error) {
+            setWorkflowVerificationResult({
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to verify connection'
+            });
+        } finally {
+            setVerifyingWorkflowLLM(false);
+        }
+        // Trigger fetching models immediately after clicking verify
+        handleLoadWorkflowLLMModels();
+    };
+
+    const handleLoadWorkflowLLMModels = async () => {
+        if (!workflowLLMBaseUrl || workflowLLMBaseUrl.trim() === '') {
+            setWorkflowVerificationResult({ success: false, message: 'Please enter Workflow LLM Server URL first' });
+            return;
+        }
+        try {
+            setWorkflowLLMModelsLoading(true);
+            const ids = await WorkflowChatAPI.listModelsFromLLM(workflowLLMBaseUrl.trim(), workflowLLMApiKey.trim() || undefined);
+            setWorkflowLLMModels(ids);
+            // Do not auto-select a model; keep input unchanged so datalist shows all
+        } catch (e) {
+            setWorkflowVerificationResult({ success: false, message: e instanceof Error ? e.message : 'Failed to fetch models' });
+        } finally {
+            setWorkflowLLMModelsLoading(false);
+        }
+    };
+
     const checkEmailValid = useMemo(
         () => debounce((value: string) => {
             console.log('checkEmailValid', value);
@@ -192,7 +255,8 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         // Check if Workflow LLM configuration has changed
         const previousWorkflowLLMApiKey = localStorage.getItem('workflowLLMApiKey') || '';
         const previousWorkflowLLMBaseUrl = localStorage.getItem('workflowLLMBaseUrl') || '';
-        const hasWorkflowConfigChanged = workflowLLMApiKey.trim() !== previousWorkflowLLMApiKey || workflowLLMBaseUrl.trim() !== previousWorkflowLLMBaseUrl;
+        const previousWorkflowLLMModel = localStorage.getItem('workflowLLMModel') || '';
+        const hasWorkflowConfigChanged = workflowLLMApiKey.trim() !== previousWorkflowLLMApiKey || workflowLLMBaseUrl.trim() !== previousWorkflowLLMBaseUrl || workflowLLMModel.trim() !== previousWorkflowLLMModel;
         
         // Save or clear OpenAI base URL
         if (openaiBaseUrl.trim()) {
@@ -206,6 +270,12 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
             localStorage.setItem('workflowLLMBaseUrl', workflowLLMBaseUrl.trim());
         } else {
             localStorage.removeItem('workflowLLMBaseUrl');
+        }
+        // Save or clear Workflow LLM model
+        if (workflowLLMModel.trim()) {
+            localStorage.setItem('workflowLLMModel', workflowLLMModel.trim());
+        } else {
+            localStorage.removeItem('workflowLLMModel');
         }
         
         // Save or clear OpenAI API key in localStorage
@@ -475,7 +545,77 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                 focus:outline-none"
                             />
                             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                <div className="mb-1"><strong>Optional:</strong> Only set if your workflow tools use a different LLM.</div>
+                                <div className="mb-1"><strong>Optional:</strong> If you don't set, the workflow will use the Claude4 model provided by us. If you need to use other models(note: only some very powerful closed-source models can support this, and they require at least 8192 context) for workflow Debug and modification, please set it.</div>
+                            </div>
+                            <div className="flex items-center mt-2">
+                                <button
+                                    onClick={handleVerifyWorkflowLLMKey}
+                                    disabled={verifyingWorkflowLLM}
+                                    className={`px-4 py-2 rounded-lg font-medium text-xs transition-colors ${
+                                        verifyingWorkflowLLM
+                                            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                                            : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white'
+                                    }`}
+                                >
+                                    {verifyingWorkflowLLM ? (
+                                        <span className="flex items-center text-xs">
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Verifying...
+                                        </span>
+                                    ) : 'Verify'}
+                                </button>
+                            </div>
+                            {workflowVerificationResult && (
+                                <div className={`mt-2 text-xs p-2 rounded-md ${
+                                    workflowVerificationResult.success 
+                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
+                                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                                }`}>
+                                    {workflowVerificationResult.message}
+                                </div>
+                            )}
+                        </div>
+                        {/* Workflow LLM Model */}
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Workflow LLM Model
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <input
+                                        list="workflow-llm-models"
+                                        type="text"
+                                        value={workflowLLMModel}
+                                        onChange={(e) => setWorkflowLLMModel(e.target.value)}
+                                        placeholder="e.g. gpt-4o-mini, claude-3-5-sonnet, llama-3.1-70b"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
+                                        bg-gray-50 dark:bg-gray-700 
+                                        text-gray-900 dark:text-white
+                                        placeholder-gray-500 dark:placeholder-gray-400
+                                        focus:border-blue-500 dark:focus:border-blue-400 
+                                        focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
+                                        focus:outline-none"
+                                        disabled={workflowLLMModelsLoading}
+                                    />
+                                    {workflowLLMModelsLoading && (
+                                        <div className="absolute inset-y-0 right-3 flex items-center">
+                                            <svg className="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
+                                    )}
+                                    {!workflowLLMModelsLoading && (
+                                        <datalist id="workflow-llm-models">
+                                            {workflowLLMModels.map(m => (
+                                                <option value={m} key={m} />
+                                            ))}
+                                        </datalist>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

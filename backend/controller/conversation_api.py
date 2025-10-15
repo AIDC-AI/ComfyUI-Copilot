@@ -245,6 +245,7 @@ async def invoke_chat(request):
         # Workflow LLM settings (optional, used by tools/agents that need a different LLM)
         "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
         "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
+        "workflow_llm_model": request.headers.get('Workflow-LLM-Model'),
         "model_select": next((x['data'][0] for x in ext if x['type'] == 'model_select' and x.get('data')), None)
     }
     
@@ -514,6 +515,7 @@ async def invoke_debug(request):
         # Workflow LLM settings (optional)
         "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
         "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
+        "workflow_llm_model": request.headers.get('Workflow-LLM-Model'),
     }
 
     # 获取当前语言
