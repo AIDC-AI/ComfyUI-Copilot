@@ -2,7 +2,7 @@
  * @Author: ai-business-hql qingli.hql@alibaba-inc.com
  * @Date: 2025-06-24 16:29:05
  * @LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
- * @LastEditTime: 2025-09-29 17:43:30
+ * @LastEditTime: 2025-10-15 14:49:15
  * @FilePath: /comfyui_copilot/ui/src/apis/workflowChatApi.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -38,6 +38,7 @@ const getOpenAiConfig = () => {
     const rsaPublicKey = localStorage.getItem('rsaPublicKey');
     const workflowLLMApiKey = localStorage.getItem('workflowLLMApiKey');
     const workflowLLMBaseUrl = localStorage.getItem('workflowLLMBaseUrl');
+    const workflowLLMModel = localStorage.getItem('workflowLLMModel');
     
     return { 
         openaiApiKey: openaiApiKey || '', 
@@ -45,6 +46,7 @@ const getOpenAiConfig = () => {
         rsaPublicKey,
         workflowLLMApiKey: workflowLLMApiKey || '',
         workflowLLMBaseUrl: workflowLLMBaseUrl || '',
+        workflowLLMModel: workflowLLMModel || '',
     };
 };
 
@@ -145,7 +147,7 @@ export namespace WorkflowChatAPI {
     try {
       const apiKey = getApiKey();
       const browserLanguage = app.extensionManager.setting.get('Comfy.Locale');
-      const { openaiApiKey, openaiBaseUrl, rsaPublicKey, workflowLLMApiKey, workflowLLMBaseUrl } = getOpenAiConfig();
+      const { openaiApiKey, openaiBaseUrl, rsaPublicKey, workflowLLMApiKey, workflowLLMBaseUrl, workflowLLMModel } = getOpenAiConfig();
       // Generate a unique message ID for this chat request
       const messageId = generateUUID();
 
@@ -268,6 +270,9 @@ export namespace WorkflowChatAPI {
       }
       if (workflowLLMApiKey) {
         headers['Workflow-LLM-Api-Key'] = workflowLLMApiKey;
+      }
+      if (workflowLLMModel) {
+        headers['Workflow-LLM-Model'] = workflowLLMModel;
       }
       
       // Create controller and combine with external signal if provided
@@ -600,12 +605,68 @@ export namespace WorkflowChatAPI {
     return result as { models: { label: string; name: string; image_enable: boolean }[] };
   }
 
+  // Fetch models directly from an OpenAI-compatible LLM server via its /models endpoint
+  export async function listModelsFromLLM(
+    baseUrl: string,
+    apiKey?: string
+  ): Promise<string[]> {
+    const headers: Record<string, string> = {
+      'accept': 'application/json',
+    };
+
+    if (apiKey && apiKey.trim() !== '') {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    // Normalize base URL to avoid double slashes
+    const normalizedBase = baseUrl.replace(/\/$/, '');
+    const url = `${normalizedBase}/models`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models from LLM: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    // Attempt to support multiple possible shapes
+    // OpenAI style: { data: [{ id: string }, ...] }
+    if (Array.isArray(result?.data)) {
+      const ids = result.data
+        .map((m: any) => (typeof m === 'string' ? m : (m?.id || m?.name)))
+        .filter((v: any) => typeof v === 'string' && v.trim() !== '');
+      return Array.from(new Set(ids));
+    }
+
+    // Alternate style: { models: [{ id/name }, ...] } or [ ... ]
+    const modelsField = result?.models ?? result;
+    if (Array.isArray(modelsField)) {
+      const ids = modelsField
+        .map((m: any) => (typeof m === 'string' ? m : (m?.id || m?.name)))
+        .filter((v: any) => typeof v === 'string' && v.trim() !== '');
+      return Array.from(new Set(ids));
+    }
+
+    // Single object with id/name
+    const single = result?.id || result?.name;
+    if (typeof single === 'string' && single.trim() !== '') {
+      return [single];
+    }
+
+    // Fallback to empty list if shape is unrecognized
+    return [];
+  }
+
   export async function* streamDebugAgent(
     workflowData: any, 
     abortSignal?: AbortSignal
   ): AsyncGenerator<ChatResponse> {
     try {
-      const { openaiApiKey, openaiBaseUrl, workflowLLMApiKey, workflowLLMBaseUrl } = getOpenAiConfig();
+      const { openaiApiKey, openaiBaseUrl, workflowLLMApiKey, workflowLLMBaseUrl, workflowLLMModel } = getOpenAiConfig();
       const browserLanguage = app.extensionManager.setting.get('Comfy.Locale');
       const session_id = localStorage.getItem("sessionId") || null;
       const apiKey = getApiKey();
@@ -631,7 +692,9 @@ export namespace WorkflowChatAPI {
       if (workflowLLMApiKey) {
         headers['Workflow-LLM-Api-Key'] = workflowLLMApiKey;
       }
-      
+      if (workflowLLMModel) {
+        headers['Workflow-LLM-Model'] = workflowLLMModel;
+      }
       // Create controller and combine with external signal if provided
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
