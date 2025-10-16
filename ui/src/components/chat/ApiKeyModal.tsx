@@ -409,8 +409,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                     className='mb-4'
                 >
                     <div>
-                        {/* API Key */}
-                        <div className="mb-4">
+                        <div className='mb-4'>
                             {
                                 TAB_LIST?.map((tab) => <TabButton 
                                     active={activeTab === tab}
@@ -419,9 +418,14 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                     {tab}
                                 </TabButton>)
                             }
-                            
-                            {
-                                activeTab !== 'LMStudio' && <div className="relative">
+                        </div>
+                        {/* API Key */}
+                        {
+                            activeTab !== 'LMStudio' && <div className="mb-4">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-2 mb-2">
+                                    API Key
+                                </label>
+                                <div className="relative">
                                     <input
                                         type={showOpenaiApiKey ? "text" : "password"}
                                         value={openaiApiKey}
@@ -462,8 +466,8 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                         )}
                                     </button>
                                 </div>
-                            }
-                        </div>
+                            </div>
+                        }
                         
                         {/* Base URL */}
                         <div className="mb-4">
@@ -483,7 +487,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                     }))
                                     setOpenaiBaseUrl(e.target.value)
                                 }}
-                                placeholder="https://api.openai.com/v1 or http://localhost:1234/v1 for LMStudio"
+                                placeholder={`${activeTab==='OpenAI' ? "https://api.openai.com/v1" : "http://localhost:1234/v1"}`}
                                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
                                 bg-gray-50 dark:bg-gray-700
                                 text-gray-900 dark:text-white
