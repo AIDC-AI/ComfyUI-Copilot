@@ -494,11 +494,18 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
                                 focus:outline-none"
                             />
-                            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                <div className="mb-1"><strong>� For LMStudio:</strong> http://localhost:1235/v1 (leave API key empty)</div>
-                                <div className="mb-1"><strong>🌐 For OpenAI:</strong> https://api.openai.com/v1 (requires API key)</div>
-                                <div><strong>⚙️ For Custom:</strong> Any OpenAI-compatible server URL</div>
-                            </div>
+                        </div>
+                        
+                        <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                            {
+                                activeTab === 'LMStudio' && <div className="mb-1"><strong>� For LMStudio:</strong> http://localhost:1235/v1 (leave API key empty)</div>
+                            }
+                            {
+                                activeTab === 'OpenAI' && <>
+                                    <div className="mb-1"><strong>🌐 For OpenAI:</strong> https://api.openai.com/v1 (requires API key)</div>
+                                    <div><strong>⚙️ For Custom:</strong> Any OpenAI-compatible server URL</div>
+                                </>
+                            }
                         </div>
                         
                         {/* Verify Button */}
