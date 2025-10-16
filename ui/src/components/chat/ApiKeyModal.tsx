@@ -2,7 +2,7 @@
  * @Author: 晴知 qingli.hql@alibaba-inc.com
  * @Date: 2024-12-12 21:28:03
  * @LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
- * @LastEditTime: 2025-09-01 19:49:52
+ * @LastEditTime: 2025-10-16 11:49:08
  * @FilePath: /comfyui_copilot/ui/src/components/chat/ApiKeyModal.tsx
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBK                            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                 <div className="mb-1"><strong>🔗 For LMStudio:</strong> http://localhost:1234/v1 (leave API key empty)</div>
@@ -419,9 +419,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                     {tab}
                                 </TabButton>)
                             }
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-2 mb-2">
-                                API Key (Optional for LMStudio)
-                            </label>
+                            
                             {
                                 activeTab !== 'LMStudio' && <div className="relative">
                                     <input
@@ -437,7 +435,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                             }))
                                             setOpenaiApiKey(e.target.value)
                                         }}
-                                        placeholder="Enter your OpenAI API key (leave empty for LMStudio)"
+                                        placeholder="Enter your OpenAI API key "
                                         className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
                                         bg-gray-50 dark:bg-gray-700
                                         text-gray-900 dark:text-white
@@ -498,7 +496,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                         
                         <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
                             {
-                                activeTab === 'LMStudio' && <div className="mb-1"><strong>� For LMStudio:</strong> http://localhost:1235/v1 (leave API key empty)</div>
+                                activeTab === 'LMStudio' && <div className="mb-1"><strong>� For LMStudio:</strong> http://localhost:1235/v1</div>
                             }
                             {
                                 activeTab === 'OpenAI' && <>
