@@ -15,8 +15,7 @@ except Exception:
         "Detected incorrect or missing 'agents' package while loading tools. "
         "Please install 'openai-agents' and ensure this plugin prefers it. Commands:\n"
         "  python -m pip uninstall -y agents gym tensorflow\n"
-        "  python -m pip install -U openai-agents\n\n"
-        "Or set COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 to prefer openai-agents without uninstalling."
+        "  python -m pip install -U openai-agents\n"
     )
 from .workflow_rewrite_agent_simple import rewrite_workflow_simple
 
