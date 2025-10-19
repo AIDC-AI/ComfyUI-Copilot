@@ -6,7 +6,7 @@ LastEditTime: 2025-10-11 16:32:59
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key
+from ..utils.globals import DISABLE_EXTERNAL_CONNECTIONS, LOCAL_LLM_BASE_URL, ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY
 from .. import core
 import asyncio
 import os
@@ -71,17 +71,12 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             raise ValueError("No session_id found in request context")
         if not config:
             raise ValueError("No config found in request context")
-        async with MCPServerSse(
-            params= {
-                "url": BACKEND_BASE_URL + "/mcp-server/mcp",
-                "timeout": 300.0,
-                "headers": {"X-Session-Id": session_id, "Authorization": f"Bearer {get_comfyui_copilot_api_key()}"}
-            },
-            cache_tools_list=True,
-            client_session_timeout_seconds=300.0
-        ) as server:
+        
+        # Local-only mode: disable external MCP server connections
+        if DISABLE_EXTERNAL_CONNECTIONS:
+            log.info("External connections disabled - running in local-only mode")
             
-            # 创建workflow_rewrite_agent实例 (session_id通过context获取)
+            # Create workflow_rewrite_agent instance (session_id obtained through context)
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
             
             class HandoffRewriteData(BaseModel):
@@ -98,8 +93,8 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             )
             
             agent = create_agent(
-                name="ComfyUI-Copilot",
-                instructions=f"""You are a powerful AI assistant for designing image processing workflows, capable of automating problem-solving using tools and commands.
+                name="ComfyUI-Copilot-Local",
+                instructions=f"""You are a powerful AI assistant for designing image processing workflows, operating in LOCAL-ONLY mode without external server dependencies.
 
 When handing off to workflow rewrite agent or other agents, this session ID should be used for workflow data management.
 
@@ -138,7 +133,7 @@ You must adhere to the following constraints to complete the task:
      - Reinstalling dependencies
      - Alternative approaches if the extension is problematic
                 """,
-                mcp_servers=[server],
+                mcp_servers=[],  # No external MCP servers in local-only mode
                 handoffs=[handoff_rewrite],
                 config=config
             )
@@ -146,14 +141,14 @@ You must adhere to the following constraints to complete the task:
             # Use messages directly as agent input since they're already in OpenAI format
             # The caller has already handled image formatting within messages
             agent_input = messages
-            log.info(f"-- Processing {len(messages)} messages")
+            log.info(f"-- Processing {len(messages)} messages in local-only mode")
 
             result = Runner.run_streamed(
                 agent,
                 input=agent_input,
                 max_turns=30,
             )
-            log.info("=== MCP Agent Run starting ===")
+            log.info("=== Local MCP Agent Run starting ===")
             
             # Variables to track response state similar to reference facade.py
             current_text = ''

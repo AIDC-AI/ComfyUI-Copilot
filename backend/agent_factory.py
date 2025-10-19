@@ -22,7 +22,14 @@ except Exception:
         "Alternatively, keep both by setting COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 so this plugin prefers openai-agents."
     )
 from dotenv import dotenv_values
-from .utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, get_comfyui_copilot_api_key, is_lmstudio_url
+from .utils.globals import (
+    LLM_DEFAULT_BASE_URL, 
+    LMSTUDIO_DEFAULT_BASE_URL, 
+    get_comfyui_copilot_api_key, 
+    is_lmstudio_url,
+    DISABLE_EXTERNAL_CONNECTIONS,
+    LOCAL_LLM_BASE_URL
+)
 from openai import AsyncOpenAI
 
 
@@ -57,14 +64,19 @@ def create_agent(**kwargs) -> Agent:
         default_headers["X-Session-ID"] = session_id
 
     # Determine base URL and API key
-    base_url = LLM_DEFAULT_BASE_URL
-    api_key = get_comfyui_copilot_api_key() or ""
-    
-    if config:
-        if config.get("openai_base_url") and config.get("openai_base_url") != "":
-            base_url = config.get("openai_base_url")
-        if config.get("openai_api_key") and config.get("openai_api_key") != "":
-            api_key = config.get("openai_api_key")
+    # In local-only mode, always use local LLM configuration
+    if DISABLE_EXTERNAL_CONNECTIONS:
+        base_url = LOCAL_LLM_BASE_URL
+        api_key = "local-llm"  # Placeholder for local LLM
+    else:
+        base_url = LLM_DEFAULT_BASE_URL
+        api_key = get_comfyui_copilot_api_key() or ""
+        
+        if config:
+            if config.get("openai_base_url") and config.get("openai_base_url") != "":
+                base_url = config.get("openai_base_url")
+            if config.get("openai_api_key") and config.get("openai_api_key") != "":
+                api_key = config.get("openai_api_key")
     
     # Check if this is LMStudio and adjust API key handling
     is_lmstudio = is_lmstudio_url(base_url)

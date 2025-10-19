@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from sqlalchemy.orm import identity
 
-from ..utils.globals import set_language
+from ..utils.globals import set_language, DISABLE_EXTERNAL_CONNECTIONS
 from ..utils.auth_utils import extract_and_store_api_key
 import server
 from aiohttp import web
@@ -26,6 +26,7 @@ from ..service.mcp_client import comfyui_agent_invoke
 from ..utils.request_context import set_request_context, get_session_id
 from ..utils.logger import log
 from ..utils.modelscope_gateway import ModelScopeGateway
+from ..utils.local_session_manager import get_session_manager
 import folder_paths
 
 # 全局下载进度存储
@@ -208,7 +209,7 @@ def processMessagesWithCheckpoints(messages):
 async def invoke_chat(request):
     log.info("Received invoke_chat request")
     
-    # Extract and store API key from Authorization header
+    # Extract and store API key from Authorization header (now generates local UUID if in local mode)
     extract_and_store_api_key(request)
     
     req_json = await request.json()
@@ -231,6 +232,27 @@ async def invoke_chat(request):
     ext = req_json.get('ext')
     historical_messages = req_json.get('messages', [])
     workflow_checkpoint_id = req_json.get('workflow_checkpoint_id')
+    
+    # Local session management
+    if DISABLE_EXTERNAL_CONNECTIONS:
+        session_manager = get_session_manager()
+        
+        # Create or retrieve session
+        if not session_id:
+            session = session_manager.create_session()
+            session_id = session.session_id
+            log.info(f"Created new local session: {session_id}")
+        else:
+            session = session_manager.get_session(session_id)
+            if not session:
+                # Session expired or doesn't exist, create new one
+                session = session_manager.create_session()
+                session_id = session.session_id
+                log.info(f"Session not found, created new local session: {session_id}")
+            else:
+                # Update session activity
+                session_manager.update_session_activity(session_id)
+                log.info(f"Updated activity for session: {session_id}")
     
     # 获取当前语言
     language = request.headers.get('Accept-Language', 'en')
@@ -264,6 +286,12 @@ async def invoke_chat(request):
     # Log workflow checkpoint ID if provided (workflow is now pre-saved before invoke)
     if workflow_checkpoint_id:
         log.info(f"Using workflow checkpoint ID: {workflow_checkpoint_id} for session {session_id}")
+        
+        # Store workflow checkpoint in local session if in local mode
+        if DISABLE_EXTERNAL_CONNECTIONS:
+            session_manager = get_session_manager()
+            session_manager.store_workflow_checkpoint(session_id, workflow_checkpoint_id)
+            log.info(f"Stored workflow checkpoint {workflow_checkpoint_id} in local session {session_id}")
     else:
         log.info(f"No workflow checkpoint ID provided for session {session_id}")
 

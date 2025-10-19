@@ -6,20 +6,32 @@ Authentication utilities for ComfyUI Copilot
 """
 
 from typing import Optional
-from .globals import set_comfyui_copilot_api_key, get_comfyui_copilot_api_key
+import uuid
+from .globals import set_comfyui_copilot_api_key, get_comfyui_copilot_api_key, DISABLE_EXTERNAL_CONNECTIONS
 from .logger import log
 
 def extract_and_store_api_key(request) -> Optional[str]:
     """
-    Extract Bearer token from Authorization header and store it in globals
+    Extract Bearer token from Authorization header and store it in globals.
+    In local-only mode (DISABLE_EXTERNAL_CONNECTIONS=true), generates a local UUID
+    instead of requiring an external API key.
     
     Args:
         request: The aiohttp request object
         
     Returns:
-        The extracted API key if successful, None otherwise
+        The extracted API key or generated UUID if successful, None otherwise
     """
     try:
+        # In local-only mode, generate a local UUID for session management
+        if DISABLE_EXTERNAL_CONNECTIONS:
+            # Generate a local UUID (not a real API key, just for session identification)
+            local_session_id = str(uuid.uuid4())
+            set_comfyui_copilot_api_key(local_session_id)
+            log.info(f"Local-only mode: Generated session UUID: {local_session_id[:12]}...")
+            return local_session_id
+        
+        # External mode: extract API key from Authorization header
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             api_key = auth_header[7:]  # Remove 'Bearer ' prefix
@@ -35,8 +47,8 @@ def extract_and_store_api_key(request) -> Optional[str]:
                 
             return api_key
         else:
-            log.error("No valid Authorization header found")
+            log.error("No valid Authorization header found in external mode")
             return None
     except Exception as e:
-        log.error(f"Error extracting API key: {str(e)}")
+        log.error(f"Error in extract_and_store_api_key: {str(e)}")
         return None

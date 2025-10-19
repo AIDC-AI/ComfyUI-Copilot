@@ -12,7 +12,13 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 import json
 from typing import List, Dict, Any
 from aiohttp import web
-from ..utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, is_lmstudio_url
+from ..utils.globals import (
+    LLM_DEFAULT_BASE_URL, 
+    LMSTUDIO_DEFAULT_BASE_URL, 
+    is_lmstudio_url,
+    DISABLE_EXTERNAL_CONNECTIONS,
+    LOCAL_LLM_BASE_URL
+)
 import server
 import requests
 from ..utils.logger import log
@@ -34,8 +40,15 @@ async def list_models(request):
     """
     try:
         log.info("Received list_models request")
-        openai_api_key = request.headers.get('Openai-Api-Key') or ""
-        openai_base_url = request.headers.get('Openai-Base-Url') or LLM_DEFAULT_BASE_URL
+        
+        # In local-only mode, use local LLM configuration
+        if DISABLE_EXTERNAL_CONNECTIONS:
+            openai_api_key = ""  # Local LLM may not require a key
+            openai_base_url = LOCAL_LLM_BASE_URL
+            log.info(f"Local-only mode: Using local LLM at {openai_base_url}")
+        else:
+            openai_api_key = request.headers.get('Openai-Api-Key') or ""
+            openai_base_url = request.headers.get('Openai-Base-Url') or LLM_DEFAULT_BASE_URL
 
         request_url = f"{openai_base_url}/models"
         
@@ -80,11 +93,18 @@ async def verify_openai_key(req):
         JSON response with success status and message
     """
     try:
-        openai_api_key = req.headers.get('Openai-Api-Key')
-        openai_base_url = req.headers.get('Openai-Base-Url', 'https://api.openai.com/v1')
-        
-        # Check if this is LMStudio
-        is_lmstudio = is_lmstudio_url(openai_base_url)
+        # In local-only mode, use local LLM configuration
+        if DISABLE_EXTERNAL_CONNECTIONS:
+            openai_api_key = None  # Local LLM may not require a key
+            openai_base_url = LOCAL_LLM_BASE_URL
+            is_lmstudio = is_lmstudio_url(openai_base_url)
+            log.info(f"Local-only mode: Verifying local LLM at {openai_base_url}")
+        else:
+            openai_api_key = req.headers.get('Openai-Api-Key')
+            openai_base_url = req.headers.get('Openai-Base-Url', 'https://api.openai.com/v1')
+            
+            # Check if this is LMStudio
+            is_lmstudio = is_lmstudio_url(openai_base_url)
         
         # For LMStudio, API key might not be required
         if not openai_api_key and not is_lmstudio:

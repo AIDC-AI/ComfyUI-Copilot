@@ -99,11 +99,22 @@ def set_comfyui_copilot_api_key(api_key: str) -> None:
     _global_state.set('comfyui_copilot_api_key', api_key)
 
 
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "https://comfyui-copilot-server.onrender.com")
+# Security Configuration - Local-Only Operation
+DISABLE_EXTERNAL_CONNECTIONS = os.getenv("DISABLE_EXTERNAL_CONNECTIONS", "true").lower() == "true"
+DISABLE_TELEMETRY = os.getenv("DISABLE_TELEMETRY", "true").lower() == "true"
+
+# Local LLM Configuration (DGX Spark)
+LOCAL_LLM_BASE_URL = os.getenv("LOCAL_LLM_BASE_URL", "http://sparkle:8000/v1")
+LLM_DEFAULT_BASE_URL = os.getenv("LLM_DEFAULT_BASE_URL", LOCAL_LLM_BASE_URL)
+
+# Anthropic Configuration (for workflow operations only)
+ANTHROPIC_BASE_URL = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Legacy/Deprecated - kept for compatibility but disabled by default
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "") if not DISABLE_EXTERNAL_CONNECTIONS else ""
 LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1"
-WORKFLOW_MODEL_NAME = os.getenv("WORKFLOW_MODEL_NAME", "us.anthropic.claude-sonnet-4-20250514-v1:0")
-# WORKFLOW_MODEL_NAME = "gpt-5-2025-08-07-GlobalStandard"
-LLM_DEFAULT_BASE_URL = os.getenv("LLM_DEFAULT_BASE_URL", BACKEND_BASE_URL + "/v1")
+WORKFLOW_MODEL_NAME = os.getenv("WORKFLOW_MODEL_NAME", "claude-3-5-sonnet-20241022")
 
 
 def is_lmstudio_url(base_url: str) -> bool:
