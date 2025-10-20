@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-10-11 16:32:59
+LastEditTime: 2025-10-20 17:28:25
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -71,7 +71,9 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             raise ValueError("No session_id found in request context")
         if not config:
             raise ValueError("No config found in request context")
-        async with MCPServerSse(
+        
+        # Create MCP server instances
+        mcp_server = MCPServerSse(
             params= {
                 "url": BACKEND_BASE_URL + "/mcp-server/mcp",
                 "timeout": 300.0,
@@ -79,7 +81,21 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             },
             cache_tools_list=True,
             client_session_timeout_seconds=300.0
-        ) as server:
+        )
+        
+        bing_server = MCPServerSse(
+            params= {
+                "url": "https://mcp.api-inference.modelscope.net/8c9fe550938e4f/sse",
+                "timeout": 300.0,
+                "headers": {"X-Session-Id": session_id, "Authorization": f"Bearer {get_comfyui_copilot_api_key()}"}
+            },
+            cache_tools_list=True,
+            client_session_timeout_seconds=300.0
+        )
+        
+        server_list = [mcp_server, bing_server]
+        
+        async with mcp_server, bing_server:
             
             # 创建workflow_rewrite_agent实例 (session_id通过context获取)
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
@@ -121,6 +137,8 @@ You must adhere to the following constraints to complete the task:
 - [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
 - When the user's intent is to query, return the query result directly without attempting to assist the user in performing operations.
 - When the user's intent is to get prompts for image generation (like Stable Diffusion). Use specific descriptive language with proper weight modifiers (e.g., (word:1.2)), prefer English terms, and separate elements with commas. Include quality terms (high quality, detailed), style specifications (realistic, anime), lighting (cinematic, golden hour), and composition (wide shot, close up) as needed. When appropriate, include negative prompts to exclude unwanted elements. Return words divided by commas directly without any additional text.
+- If you cannot find the information needed to answer a query, consider using bing_search to obtain relevant information. For example, if search_node tool cannot find the node, you can use bing_search to obtain relevant information about those nodes or components.
+- If search_node tool cannot find the node, you MUST use bing_search to obtain relevant information about those nodes or components.
 
 - **DEBUG Intent** - When the user's intent is to debug workflow execution problems, runtime errors, or troubleshoot failed workflows (keywords: "debug", "调试", "工作流报错", "执行失败", "workflow failed", "node error", "runtime error", "不能运行", "出错了"), respond with: "Please click the 🪲 button in the bottom right corner to trigger debug"
 
@@ -138,7 +156,7 @@ You must adhere to the following constraints to complete the task:
      - Reinstalling dependencies
      - Alternative approaches if the extension is problematic
                 """,
-                mcp_servers=[server],
+                mcp_servers=server_list,
                 handoffs=[handoff_rewrite],
                 config=config
             )
@@ -248,9 +266,17 @@ You must adhere to the following constraints to complete the task:
                                         
                                     if "text" in tool_output_data and tool_output_data.get('text'):
                                         parsed_output = json.loads(tool_output_data['text'])
-                                        answer = parsed_output.get("answer")
-                                        data = parsed_output.get("data")
-                                        tool_ext = parsed_output.get("ext")
+                                        
+                                        # Handle case where parsed_output might be a list instead of dict
+                                        if isinstance(parsed_output, dict):
+                                            answer = parsed_output.get("answer")
+                                            data = parsed_output.get("data")
+                                            tool_ext = parsed_output.get("ext")
+                                        else:
+                                            # If it's a list or other type, handle gracefully
+                                            answer = None
+                                            data = parsed_output if isinstance(parsed_output, list) else None
+                                            tool_ext = None
                                         
                                         # Store tool results similar to reference facade.py
                                         tool_results[tool_name] = {
@@ -264,7 +290,6 @@ You must adhere to the following constraints to complete the task:
                                         # Track workflow tools that produced results
                                         if tool_name in ["recall_workflow", "gen_workflow"]:
                                             log.info(f"-- Workflow tool '{tool_name}' produced result with data: {len(data) if data else 0}")
-                                            
                                         
                                         
                                         
