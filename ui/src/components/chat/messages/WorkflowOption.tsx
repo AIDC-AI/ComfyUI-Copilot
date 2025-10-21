@@ -128,7 +128,9 @@ export function WorkflowOption({ content, name = 'Assistant', avatar, latestInpu
                         onAddMessage?.(aiMessage);
                     } catch (error) {
                         console.error('[WorkflowOption] Error fetching node info:', error);
-                        alert('Error checking required nodes. Please try again.');
+                        // alert('Error checking required nodes. Please try again.');
+                        // 没法引导下载节点，直接加载工作流吧
+                        loadWorkflow(optimizedResult.workflow, optimizedResult.optimized_params);
                     } finally {
                         // 无论成功或失败，重置加载状态
                         setLoadingWorkflows(prev => ({
