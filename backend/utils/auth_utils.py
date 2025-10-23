@@ -29,9 +29,9 @@ def extract_and_store_api_key(request) -> Optional[str]:
             # Verify it's stored correctly
             stored_key = get_comfyui_copilot_api_key()
             if stored_key == api_key:
-                log.info("API key verification: ✓ Successfully stored in globals")
+                log.info("API key verification: Successfully stored in globals")
             else:
-                log.error("API key verification: ✗ Storage failed")
+                log.error("API key verification: Storage failed")
                 
             return api_key
         else:
