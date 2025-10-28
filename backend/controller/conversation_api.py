@@ -205,6 +205,32 @@ def processMessagesWithCheckpoints(messages):
     # ... existing code ...
     pass
 
+@server.PromptServer.instance.routes.get("/api/config")
+async def get_config(request):
+    """
+    Get configuration information including local mode status and LLM settings.
+    This endpoint tells the frontend whether the system is running in local-only mode
+    and what the default LLM configuration is.
+    """
+    from ..utils.globals import (
+        DISABLE_EXTERNAL_CONNECTIONS,
+        DISABLE_TELEMETRY,
+        LOCAL_LLM_BASE_URL,
+        ANTHROPIC_BASE_URL,
+        WORKFLOW_MODEL_NAME
+    )
+
+    return web.json_response({
+        "status": "success",
+        "data": {
+            "local_mode": DISABLE_EXTERNAL_CONNECTIONS,
+            "telemetry_disabled": DISABLE_TELEMETRY,
+            "local_llm_base_url": LOCAL_LLM_BASE_URL if DISABLE_EXTERNAL_CONNECTIONS else None,
+            "anthropic_base_url": ANTHROPIC_BASE_URL if DISABLE_EXTERNAL_CONNECTIONS else None,
+            "workflow_model_name": WORKFLOW_MODEL_NAME if DISABLE_EXTERNAL_CONNECTIONS else None,
+        }
+    })
+
 @server.PromptServer.instance.routes.post("/api/chat/invoke")
 async def invoke_chat(request):
     log.info("Received invoke_chat request")

@@ -71,6 +71,11 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const [activeTab, setActiveTab] = useState<string>(TAB_LIST[0]);
     const [tabStrMap, setTabStrMap] = useState<Record<string, Record<string, string>> | null>(null);
 
+    // Local mode configuration
+    const [localMode, setLocalMode] = useState(false);
+    const [localLLMBaseUrl, setLocalLLMBaseUrl] = useState('');
+    const [configLoading, setConfigLoading] = useState(true);
+
     const { apikeymodel_title } = useLanguage();
 
     useEffect(() => {
@@ -82,6 +87,38 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
             }
         })
         setTabStrMap(map);
+
+        // Fetch backend configuration to determine if we're in local mode
+        const fetchConfig = async () => {
+            try {
+                setConfigLoading(true);
+                const response = await fetch(`${BASE_URL}/api/config`);
+                const data = await response.json();
+                if (data.status === 'success' && data.data) {
+                    setLocalMode(data.data.local_mode);
+                    setLocalLLMBaseUrl(data.data.local_llm_base_url || '');
+
+                    // Auto-populate LLM configuration with local settings if in local mode
+                    if (data.data.local_mode && data.data.local_llm_base_url) {
+                        // Only set if not already configured by user
+                        if (!localStorage.getItem('openaiBaseUrl')) {
+                            setOpenaiBaseUrl(data.data.local_llm_base_url);
+                        }
+                        if (data.data.workflow_model_name && !localStorage.getItem('workflowLLMModel')) {
+                            setWorkflowLLMModel(data.data.workflow_model_name);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch config:', error);
+                // Default to non-local mode if config fetch fails
+                setLocalMode(false);
+            } finally {
+                setConfigLoading(false);
+            }
+        };
+
+        fetchConfig();
     }, [])
 
     useEffect(() => {
@@ -331,9 +368,28 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center">
             <div className="bg-white dark:bg-gray-800 rounded-xl p-8 w-[480px] max-h-[80vh] shadow-2xl overflow-y-auto">
-                <h2 className="text-xl text-gray-900 dark:text-white font-semibold mb-6">Set API Key</h2>
-                
-                <div className="mb-6">
+                <h2 className="text-xl text-gray-900 dark:text-white font-semibold mb-6">
+                    {localMode ? 'LLM Configuration - Local Mode' : 'Set API Key'}
+                </h2>
+
+                {/* Local Mode Indicator */}
+                {localMode && (
+                    <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-start">
+                            <svg className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <h3 className="text-sm font-medium text-green-800 dark:text-green-300">Local-Only Mode Active</h3>
+                                <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+                                    This system is configured for privacy-focused local operation. Your data stays on your machine and uses your local LLM at <strong>{localLLMBaseUrl}</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!localMode && <div className="mb-6">
                     <div className='flex flex-row justify-between'>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Email
@@ -379,9 +435,9 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                             Terms of Use
                         </a>.
                     </div>
-                </div>
-                {/* Main API Key */}
-                <div className="mb-6">
+                </div>}
+                {/* Main API Key - Hidden in local mode */}
+                {!localMode && <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         ComfyUI Copilot API Key
                     </label>
@@ -401,12 +457,15 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                             </path>
                         </svg>
                     </StartLink>
-                </div>
-                
+                </div>}
+
                 {/* LLM Configuration */}
-                <CollapsibleCard 
-                    title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">LLM Configuration (OpenAI / LMStudio / Custom)</h3>}
+                <CollapsibleCard
+                    title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">
+                        {localMode ? 'Chat LLM Configuration (Optional Override)' : 'LLM Configuration (OpenAI / LMStudio / Custom)'}
+                    </h3>}
                     className='mb-4'
+                    defaultExpanded={!localMode}
                 >
                     <div>
                         {/* API Key */}

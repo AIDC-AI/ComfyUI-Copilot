@@ -27,10 +27,10 @@ interface ChatHeaderProps {
     onConfigurationUpdated?: () => void;
 }
 
-export function ChatHeader({ 
-    onClose, 
-    onClear, 
-    hasMessages, 
+export function ChatHeader({
+    onClose,
+    onClear,
+    hasMessages,
     onHeightResize,
     title = "ComfyUI-Copilot",
     onSelectSession,
@@ -40,6 +40,7 @@ export function ChatHeader({
     const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
     const [isSessionHistoryModalOpen, setIsSessionHistoryModalOpen] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
+    const [localMode, setLocalMode] = useState(false);
     
     const handleApiKeyClick = () => {
         setIsApiKeyModalOpen(true);
@@ -65,6 +66,22 @@ export function ChatHeader({
     const onFeedback = () => {
         window.open('https://docs.google.com/forms/d/e/1FAIpQLSf_SeUpgrZh8sPGwVFXAlsviVXKpsQnyaevcB2VrIqUBYUMKg/viewform?usp=dialog', '_blank');
     }
+
+    // Check for local mode on mount
+    useEffect(() => {
+        const checkLocalMode = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/api/config');
+                const data = await response.json();
+                if (data.status === 'success' && data.data) {
+                    setLocalMode(data.data.local_mode || false);
+                }
+            } catch (error) {
+                console.debug('Could not fetch config for header');
+            }
+        };
+        checkLocalMode();
+    }, []);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -93,12 +110,17 @@ export function ChatHeader({
             <div className="flex items-center justify-between border-b px-3 py-2 
                         bg-white border-gray-200 sticky top-2 z-10">
                 <div className="flex items-center space-x-1">
-                    <img 
+                    <img
                         src={`.${logoImage}`}
-                        alt="ComfyUI-Copilot Logo" 
-                        className="h-7 w-7 -ml-1" 
+                        alt="ComfyUI-Copilot Logo"
+                        className="h-7 w-7 -ml-1"
                     />
                     <h3 className="text-[14px] font-medium text-gray-800">{title}</h3>
+                    {localMode && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold text-green-700 bg-green-100 rounded-md" title="Running in local-only mode">
+                            LOCAL
+                        </span>
+                    )}
                     <button
                         onClick={handleApiKeyClick}
                         className="p-1 bg-white border-none hover:!bg-gray-100 rounded text-gray-500"

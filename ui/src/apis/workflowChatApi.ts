@@ -63,12 +63,31 @@ const checkAndSaveApiKey = (response: Response) => {
   }
 };
 
-
+// Check if telemetry is disabled
+let telemetryDisabled = false;
+(async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/config`);
+    const data = await response.json();
+    if (data.status === 'success' && data.data) {
+      telemetryDisabled = data.data.telemetry_disabled || false;
+      console.log('Telemetry status:', telemetryDisabled ? 'disabled' : 'enabled');
+    }
+  } catch (error) {
+    console.debug('Could not fetch config, telemetry status unknown');
+  }
+})();
 
 export namespace WorkflowChatAPI {
   export async function trackEvent(
     request: TrackEventRequest
   ): Promise<void> {
+    // Skip tracking if telemetry is disabled
+    if (telemetryDisabled) {
+      console.debug('Telemetry disabled - skipping trackEvent');
+      return Promise.resolve();
+    }
+
     try {
       // Use non-blocking fetch to avoid interrupting the main flow
       const apiKey = getApiKey();
