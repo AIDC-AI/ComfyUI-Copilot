@@ -1,6 +1,8 @@
 '''
 Debug Agent for ComfyUI Workflow Error Analysis
 '''
+import json
+from typing import Dict, Any
 from ..utils.key_utils import workflow_config_adapt
 from ..agent_factory import create_agent
 from agents.items import ItemHelpers
@@ -703,6 +705,200 @@ Start by validating the workflow to see its current state.""",
         ext_with_finished = {
             "finished": True
         }
+        yield (error_message, ext_with_finished)
+
+
+async def debug_workflow_errors_single(workflow_data: Dict[str, Any]):
+    """
+    Analyze and debug workflow errors using a single-agent architecture.
+    The single agent has access to all tools used across the multi-agent system
+    and iteratively validates, analyzes, fixes, and re-validates until success or limits.
+    
+    Args:
+        workflow_data: Current workflow data from app.graphToPrompt()
+        
+    Yields:
+        tuple: (text, ext) where text is accumulated text and ext is structured data
+    """
+    try:
+        session_id = get_session_id()
+        config = get_config()
+        config = workflow_config_adapt(config)
+        
+        if not session_id:
+            session_id = str(uuid.uuid4())
+        
+        # Save initial workflow snapshot
+        log.info(f"[SingleAgent] Saving workflow data for session {session_id}")
+        save_result = save_workflow_data(
+            session_id,
+            workflow_data,
+            attributes={"action": "debug_start_single", "description": "Initial workflow save for single-agent debugging"}
+        )
+        log.info(f"[SingleAgent] Workflow saved with version ID: {save_result}")
+        
+        single_agent = create_agent(
+            name="ComfyUI-Debug-SingleAgent",
+            instructions=f"""
+You are a single ComfyUI workflow debugging expert with access to all specialized tools.
+
+Your iterative loop (up to 10 cycles):
+1) Validate workflow using run_workflow()
+2) If errors: analyze with analyze_error_type() and decide fix strategy
+   - Connection errors: use analyze_missing_connections() then apply_connection_fixes()
+   - Parameter errors: use find_matching_parameter_value(), get_model_files(), update_workflow_parameter()
+     • For model downloads required: use suggest_model_download() and STOP (final response)
+   - Structural issues: use get_current_workflow(), get_node_info(), update_workflow()
+3) After any fix, immediately re-run run_workflow() to verify
+4) Repeat until validation succeeds or loop limit reached
+
+Guidelines:
+- Be concise and stream updates during the process
+- Prefer high-confidence fixes first; add nodes only when necessary
+- Do not modify unrelated parameters
+- Language: {get_language()}
+""",
+            model=WORKFLOW_MODEL_NAME,
+            tools=[
+                # Coordinator tools
+                run_workflow, analyze_error_type, save_current_workflow,
+                # Link/structure tools
+                analyze_missing_connections, apply_connection_fixes, get_current_workflow, get_node_info, update_workflow,
+                # Parameter tools
+                find_matching_parameter_value, get_model_files, suggest_model_download, update_workflow_parameter,
+            ],
+            config={
+                "max_tokens": 8192,
+                **config
+            }
+        )
+        
+        messages = [{"role": "user", "content": "Validate and debug this ComfyUI workflow using the iterative loop until success."}]
+        
+        log.info(f"[SingleAgent] Starting validation process for session {session_id}")
+        result = Runner.run_streamed(
+            single_agent,
+            input=messages,
+            max_turns=30,
+        )
+        
+        current_text = ''
+        current_agent = "ComfyUI-Debug-SingleAgent"
+        last_yielded_length = 0
+        debug_events = []
+        workflow_update_ext = None
+        
+        async for event in result.stream_events():
+            if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                delta_text = event.data.delta
+                if delta_text:
+                    current_text += delta_text
+                    if len(current_text) > last_yielded_length:
+                        last_yielded_length = len(current_text)
+                        yield (current_text, None)
+            elif event.type == "run_item_stream_event":
+                item_updated = False
+                if event.item.type == "tool_call_item":
+                    tool_name = getattr(event.item.raw_item, 'name', 'unknown_tool')
+                    log.info(f"[SingleAgent] -- Tool called: {tool_name}")
+                    current_text += f"\n\n⚙ *{current_agent} is using {tool_name}...*\n\n"
+                    item_updated = True
+                    debug_events.append({
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "agent": current_agent,
+                        "timestamp": len(current_text)
+                    })
+                elif event.item.type == "tool_call_output_item":
+                    output = str(event.item.output)
+                    output_preview = output[:200] + "..." if len(output) > 200 else output
+                    current_text += f"\n\n● *Tool execution completed*\n\n```\n{output_preview}\n```\n\n"
+                    item_updated = True
+                    try:
+                        tool_output_json = json.loads(output)
+                        if "ext" in tool_output_json and tool_output_json["ext"]:
+                            for ext_item in tool_output_json["ext"]:
+                                if ext_item.get("type") == "workflow_update" or ext_item.get("type") == "param_update":
+                                    workflow_update_ext = ext_item
+                                    log.info(f"[SingleAgent] -- Captured {ext_item.get('type')} ext, yielding immediately")
+                                    ext_with_finished = {"data": [ext_item], "finished": False}
+                                    yield (current_text, ext_with_finished)
+                                    break
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                    debug_events.append({
+                        "type": "tool_result",
+                        "output_preview": output_preview,
+                        "agent": current_agent,
+                        "timestamp": len(current_text)
+                    })
+                elif event.item.type == "message_output_item":
+                    try:
+                        message_content = ItemHelpers.text_message_output(event.item)
+                        if message_content and message_content.strip():
+                            if message_content not in current_text:
+                                current_text += f"\n\n{message_content}\n\n"
+                                item_updated = True
+                                debug_events.append({
+                                    "type": "message_complete",
+                                    "content_length": len(message_content),
+                                    "agent": current_agent,
+                                    "timestamp": len(current_text)
+                                })
+                    except Exception as e:
+                        log.error(f"[SingleAgent] Error processing message output: {str(e)}")
+                if item_updated:
+                    last_yielded_length = len(current_text)
+                    yield (current_text, None)
+        
+        log.info("[SingleAgent] === Debug process complete ===")
+        
+        debug_completion_checkpoint_id = None
+        try:
+            current_workflow = get_workflow_data(session_id)
+            if current_workflow:
+                debug_completion_checkpoint_id = save_workflow_data(
+                    session_id,
+                    current_workflow,
+                    workflow_data_ui=None,
+                    attributes={
+                        "checkpoint_type": "debug_complete",
+                        "description": "Workflow state after single-agent debug completion",
+                        "action": "debug_complete_single",
+                        "final_agent": current_agent
+                    }
+                )
+                log.info(f"[SingleAgent] Debug completion checkpoint saved with ID: {debug_completion_checkpoint_id}")
+        except Exception as checkpoint_error:
+            log.error(f"[SingleAgent] Failed to save debug completion checkpoint: {checkpoint_error}")
+        
+        debug_ext = [{
+            "type": "debug_complete",
+            "data": {
+                "status": "completed",
+                "final_agent": current_agent,
+                "events": debug_events,
+                "total_events": len(debug_events)
+            }
+        }]
+        if debug_completion_checkpoint_id:
+            debug_ext.append({
+                "type": "debug_checkpoint",
+                "data": {
+                    "checkpoint_id": debug_completion_checkpoint_id,
+                    "checkpoint_type": "debug_complete"
+                }
+            })
+        final_ext = debug_ext
+        if workflow_update_ext:
+            final_ext = [workflow_update_ext] + debug_ext
+            log.info("[SingleAgent] -- Including workflow_update ext in final response")
+        ext_with_finished = {"data": final_ext, "finished": True}
+        yield (current_text, ext_with_finished)
+    except Exception as e:
+        log.error(f"[SingleAgent] Error in debug_workflow_errors_single: {str(e)}")
+        error_message = f"\n\n× Error occurred during single-agent debugging: {str(e)}\n\n"
+        ext_with_finished = {"finished": True}
         yield (error_message, ext_with_finished)
 
 
