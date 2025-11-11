@@ -161,8 +161,9 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 
 #### **配置您自己的openAI模型**
 点击*按钮，配置对话模型以及工作流生成模型。
-
-<img  width="50%" alt="image" src="https://github.com/user-attachments/assets/3411f48f-d597-4ad1-b45f-9819ecec2fa7" />
+<div align="center">
+    <img  width="50%" alt="image" src="https://github.com/user-attachments/assets/3411f48f-d597-4ad1-b45f-9819ecec2fa7" />
+</div>
 
 
 #### **注意**：
