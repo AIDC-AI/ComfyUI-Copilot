@@ -159,6 +159,11 @@ https://github.com/user-attachments/assets/17f8e822-e852-47fc-8dcb-0471526b099e
 点击*按钮，在弹窗里输入您的电子邮件地址，API Key 将稍后自动发送到您的电子邮件地址。收到API Key后，将API Key粘贴到输入框中，点击保存按钮，即可激活Copilot。
 <img src="assets/keygen.png"/>
 
+#### **配置您自己的openAI模型**
+点击*按钮，配置对话模型以及工作流生成模型。
+<img  width="50%" alt="image" src="https://github.com/user-attachments/assets/3411f48f-d597-4ad1-b45f-9819ecec2fa7" />
+
+
 #### **注意**：
 本项目持续更新中，请更新到最新代码以获取新功能。您可以使用 git pull 获取最新代码，或在 ComfyUI Manager 插件中点击“更新”。
 我们的项目依赖于一些外部接口，服务部署在新加坡，可能需要您使用科学上网工具哦。
