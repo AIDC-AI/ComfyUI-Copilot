@@ -164,6 +164,12 @@ After running the ComfyUI project, find the Copilot activation button on the lef
 Click the * button, enter your email address in the popup window, and the API Key will be automatically sent to your email address later. After receiving the API Key, paste it into the input box, click the save button, and you can activate Copilot.
 <img src="assets/keygen.png"/>
 
+#### **Config your model(OpenAI/LMStudio)**
+Click the * button，config chat model and workflow generate model seperately.
+<div align="center">
+    <img  width="50%" alt="image" src="https://github.com/user-attachments/assets/3411f48f-d597-4ad1-b45f-9819ecec2fa7" />
+</div>
+
 #### **Note**：
 This project is continuously updated. Please update to the latest code to get new features. You can use git pull to get the latest code, or click "Update" in the ComfyUI Manager plugin.
 
@@ -198,6 +204,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://opens
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/ComfyUI-Copilot&type=Date)](https://star-history.com/#AIDC-AI/ComfyUI-Copilot&Date)
+
 
 
 
