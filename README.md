@@ -167,7 +167,8 @@ Click the * button, enter your email address in the popup window, and the API Ke
 #### **Config your model(OpenAI/LMStudio)**
 Click the * button，config chat model and workflow generate model seperately.
 <div align="center">
-    <img  width="50%" alt="image" src="https://github.com/user-attachments/assets/3411f48f-d597-4ad1-b45f-9819ecec2fa7" />
+  <img width="50%" alt="image" src="https://github.com/user-attachments/assets/ae27f5d4-3cf8-4138-b7cb-1bd2555fcc06" />
+
 </div>
 
 #### **Note**：
@@ -204,6 +205,7 @@ This project is licensed under the MIT License - see the [LICENSE](https://opens
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/ComfyUI-Copilot&type=Date)](https://star-history.com/#AIDC-AI/ComfyUI-Copilot&Date)
+
 
 
 
