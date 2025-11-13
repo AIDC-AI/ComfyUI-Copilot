@@ -139,6 +139,7 @@ export const handleStartGeneration = async (
     const primaryNodeId = Object.keys(paramTestValues)[0];
     const primaryNodeName = selectedNodeInfoMap[primaryNodeId] || "Unknown Node";
 
+    const finished_ids = {}
     // Start polling for images
     pollForImages(
       prompt_ids,
@@ -150,6 +151,7 @@ export const handleStartGeneration = async (
       pollingSessionIdRef,
       pollingTimeoutRef,
       updateState,
+      finished_ids,
       primaryNodeName,
       paramTestValues,
       totalCombinations,
@@ -175,6 +177,7 @@ export const pollForImages = async (
   pollingSessionIdRef: React.MutableRefObject<string | null>,
   pollingTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>,
   updateState: (key: StateKey, value: any) => void,
+  finished_ids: Record<string, boolean>,
   nodeName?: string,
   paramTestValues?: {[nodeId: string]: {[paramName: string]: any[]}},
   totalCount?: number,
@@ -186,10 +189,8 @@ export const pollForImages = async (
     console.log("Another polling session has started, stopping this one");
     return;
   }
-  // has avaiable promptId，if not, stop polling
-  const hasAvailablePromptId = prompt_ids.some(id => !!id && id !== '')
   // Check if timeout has been reached or has no avaiable promptId
-  if (Date.now() - startTime > timeoutDuration || !hasAvailablePromptId) {
+  if (Date.now() - startTime > timeoutDuration) {
     console.log("Timeout reached while waiting for images");
     if (pollingSessionIdRef.current === sessionId) {
       updateState(StateKey.IsProcessing, false);
@@ -225,7 +226,7 @@ export const pollForImages = async (
   // Check each prompt id to see if images are ready
   for (let i = 0; i < prompt_ids.length; i++) {
     const promptId = prompt_ids[i];
-    if (!promptId) continue;
+    if (!promptId || finished_ids[promptId]) continue;
     
     try {
       // We've already verified showNodeId is not null at this point
@@ -235,10 +236,11 @@ export const pollForImages = async (
         // If we have an image URL, update in our array
         newImages[i] = {
           ...newImages[i],
-          url: imageUrl || ''
+          url: imageUrl
         };
+        finished_ids[promptId] = true
+        completedImagesCount++;
       }
-      completedImagesCount++;
     } catch (error) {
       console.error(`Error fetching image for prompt ID ${promptId}:`, error);
     }
@@ -293,6 +295,7 @@ export const pollForImages = async (
         pollingSessionIdRef,
         pollingTimeoutRef,
         updateState,
+        finished_ids,
         nodeName,
         paramTestValues,
         totalCount,
