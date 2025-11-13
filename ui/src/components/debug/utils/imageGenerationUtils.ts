@@ -221,7 +221,7 @@ export const pollForImages = async (
     return;
   }
   
-  let completedImagesCount = 0;
+  let completedImagesCount = Object.keys(finished_ids)?.length || 0;
 
   // Check each prompt id to see if images are ready
   for (let i = 0; i < prompt_ids.length; i++) {
