@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from sqlalchemy.orm import identity
 
-from ..utils.globals import set_language
+from ..utils.globals import set_language, apply_llm_env_defaults
 from ..utils.auth_utils import extract_and_store_api_key
 import server
 from aiohttp import web
@@ -27,6 +27,19 @@ from ..utils.request_context import set_request_context, get_session_id
 from ..utils.logger import log
 from ..utils.modelscope_gateway import ModelScopeGateway
 import folder_paths
+
+
+def get_llm_config_from_headers(request):
+    """Extract LLM-related configuration from request headers."""
+    return {
+        "openai_api_key": request.headers.get('Openai-Api-Key'),
+        "openai_base_url": request.headers.get('Openai-Base-Url'),
+        # Workflow LLM settings (optional, used by tools/agents that need a different LLM)
+        "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
+        "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
+        "workflow_llm_model": request.headers.get('Workflow-LLM-Model'),
+    }
+
 
 # 全局下载进度存储
 download_progress = {}
@@ -240,14 +253,11 @@ async def invoke_chat(request):
     config = {
         "session_id": session_id,
         "workflow_checkpoint_id": workflow_checkpoint_id,
-        "openai_api_key": request.headers.get('Openai-Api-Key'),
-        "openai_base_url": request.headers.get('Openai-Base-Url'),
-        # Workflow LLM settings (optional, used by tools/agents that need a different LLM)
-        "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
-        "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
-        "workflow_llm_model": request.headers.get('Workflow-LLM-Model'),
+        **get_llm_config_from_headers(request),
         "model_select": next((x['data'][0] for x in ext if x['type'] == 'model_select' and x.get('data')), None)
     }
+    # Apply .env-based defaults for LLM-related fields (config > .env > code defaults)
+    config = apply_llm_env_defaults(config)
     
     # 设置请求上下文 - 这里建立context隔离
     set_request_context(session_id, workflow_checkpoint_id, config)
@@ -510,13 +520,10 @@ async def invoke_debug(request):
     config = {
         "session_id": session_id,
         "model": "gemini-2.5-flash",  # Default model for debug agents
-        "openai_api_key": request.headers.get('Openai-Api-Key'),
-        "openai_base_url": request.headers.get('Openai-Base-Url'),
-        # Workflow LLM settings (optional)
-        "workflow_llm_api_key": request.headers.get('Workflow-LLM-Api-Key'),
-        "workflow_llm_base_url": request.headers.get('Workflow-LLM-Base-Url'),
-        "workflow_llm_model": request.headers.get('Workflow-LLM-Model'),
+        **get_llm_config_from_headers(request),
     }
+    # Apply .env-based defaults for LLM-related fields (config > .env > code defaults)
+    config = apply_llm_env_defaults(config)
 
     # 获取当前语言
     language = request.headers.get('Accept-Language', 'en')
