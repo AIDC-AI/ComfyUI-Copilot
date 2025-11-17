@@ -20,7 +20,7 @@ except Exception:
 from .workflow_rewrite_agent_simple import rewrite_workflow_simple
 
 from ..dao.workflow_table import get_workflow_data, save_workflow_data, get_workflow_data_ui, get_workflow_data_by_id
-from ..utils.comfy_gateway import get_object_info
+from ..utils.comfy_gateway import get_object_info, get_object_info_by_class
 from ..utils.request_context import get_rewrite_context, get_session_id
 from ..utils.logger import log
 
@@ -108,7 +108,180 @@ async def get_node_infos(node_class_list: list[str]) -> str:
         return json.dumps(node_infos)
     except Exception as e:
         return json.dumps({"error": f"Failed to get node infos of {','.join(node_class_list)}: {str(e)}"})
-    
+
+@function_tool
+async def search_node_info(node_class: str = "", keywords: list[str] = None, limit: int = 10) -> str:
+    """
+    综合节点搜索工具（node_class + keywords 联合检索）：
+    1. 优先使用 node_class 按节点类名精确查询 /api/object_info/{node_class}。
+    2. 如果没有命中，则在全部节点中使用 node_class 和 keywords 做联合模糊搜索：
+       - 关键词会在节点类名、名称、显示名、分类、描述以及输入参数名中匹配。
+       - 关键词应该尽量具体（例如 "brightness"、"contrast"、"saturation"、"sharpness"），
+         避免使用过于宽泛的词（例如 "image"、"图像" 等），以减少噪声结果。
+    """
+    try:
+        node_class_str = (node_class or "").strip()
+        # 过滤空字符串和过于宽泛的关键词
+        raw_keywords = keywords or []
+        banned_keywords = {"image", "图像", "图片"}
+        keyword_list: list[str] = []
+        for kw in raw_keywords:
+            if not kw:
+                continue
+            kw_str = str(kw).strip()
+            if not kw_str:
+                continue
+            if kw_str.lower() in banned_keywords:
+                continue
+            keyword_list.append(kw_str)
+
+        # 1) 如果提供了 node_class，则先尝试精确按类名查询
+        if node_class_str:
+            try:
+                exact_info = await get_object_info_by_class(node_class_str)
+            except TypeError:
+                # 兼容旧版本导入方式异常的情况
+                exact_info = {}
+
+            if exact_info:
+                # exact_info 形如：{"LayerColor: BrightnessContrastV2": { ... }}
+                # 写入 rewrite_context 以便后续复用
+                rewrite_ctx = get_rewrite_context()
+                for cls_name, meta in exact_info.items():
+                    try:
+                        rewrite_ctx.node_infos[cls_name] = json.dumps(meta, ensure_ascii=False)
+                    except Exception:
+                        # 不因为缓存失败而影响主流程
+                        pass
+
+                return json.dumps(
+                    {
+                        "node_class": node_class_str,
+                        "keywords": keyword_list,
+                        "match_type": "exact_class",
+                        "results": exact_info,
+                    },
+                    ensure_ascii=False,
+                )
+
+        # 2) 精确类名未命中：在全部节点中按 node_class + keywords 联合搜索
+        if not node_class_str and not keyword_list:
+            return json.dumps({"error": "both node_class and keywords are empty"})
+
+        object_info = await get_object_info()
+        if not object_info:
+            return json.dumps({"error": "Failed to fetch object info from ComfyUI"})
+
+        # 组合所有搜索 token：node_class + keywords
+        tokens: list[str] = []
+        if node_class_str:
+            tokens.append(node_class_str.lower())
+        tokens.extend([kw.lower() for kw in keyword_list])
+
+        candidates = []
+
+        for cls_name, meta in object_info.items():
+            cls_str = str(cls_name)
+            cls_lower = cls_str.lower()
+
+            name = str(meta.get("name", "") or "")
+            display_name = str(meta.get("display_name", "") or "")
+            category = str(meta.get("category", "") or "")
+            description = str(meta.get("description", "") or "")
+
+            text_blocks = [
+                cls_lower,
+                name.lower(),
+                display_name.lower(),
+                category.lower(),
+                description.lower(),
+            ]
+            joined_text = " ".join(text_blocks)
+
+            score = 0
+            hit_params: list[str] = []
+
+            # 输入参数信息，用于参数名匹配
+            input_meta = meta.get("input") or {}
+            required_inputs = {}
+            optional_inputs = {}
+            if isinstance(input_meta, dict):
+                required_inputs = input_meta.get("required") or {}
+                optional_inputs = input_meta.get("optional") or {}
+
+            # 针对每个 token 进行匹配和评分计算
+            for token in tokens:
+                if not token:
+                    continue
+
+                # 方案1：按类名 / 名称 / 分类 / 描述做关键字匹配
+                if token in joined_text:
+                    score += joined_text.count(token)
+                    if token in cls_lower:
+                        score += 2
+
+                # 方案2：按输入参数名搜索（brightness、contrast、saturation 等）
+                for section in (required_inputs, optional_inputs):
+                    if isinstance(section, dict):
+                        for param_name in section.keys():
+                            p_str = str(param_name)
+                            if token in p_str.lower():
+                                if p_str not in hit_params:
+                                    hit_params.append(p_str)
+
+                # 方案3：输出名称作为弱信号
+                output_names = meta.get("output_name") or []
+                if isinstance(output_names, list):
+                    for out_name in output_names:
+                        if token in str(out_name).lower():
+                            score += 1
+
+            if hit_params:
+                # 参数命中整体提高权重
+                score += len(hit_params) * 3
+
+            if score <= 0:
+                continue
+
+            candidates.append(
+                {
+                    "class_name": cls_str,
+                    "score": score,
+                    "hit_params": hit_params,
+                    "name": name,
+                    "display_name": display_name,
+                    "category": category,
+                }
+            )
+
+        if not candidates:
+            return json.dumps(
+                {
+                    "node_class": node_class_str,
+                    "keywords": keyword_list,
+                    "match_type": "search",
+                    "results": [],
+                    "message": "No nodes matched the query",
+                },
+                ensure_ascii=False,
+            )
+
+        # 按得分排序，并限制返回数量
+        candidates.sort(key=lambda x: x["score"], reverse=True)
+        limit = max(1, min(int(limit), 50))  # 给一个合理的上限
+        results = candidates[:limit]
+
+        return json.dumps(
+            {
+                "node_class": node_class_str,
+                "keywords": keyword_list,
+                "match_type": "search",
+                "results": results,
+            },
+            ensure_ascii=False,
+        )
+    except Exception as e:
+        return json.dumps({"error": f"Failed to search node info: {str(e)}"})
 
 def save_checkpoint_before_modification(session_id: str, action_description: str) -> Optional[int]:
     """在修改工作流前保存checkpoint，返回checkpoint_id"""
