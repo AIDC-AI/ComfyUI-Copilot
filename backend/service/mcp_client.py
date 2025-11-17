@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-10-20 17:28:25
+LastEditTime: 2025-11-17 15:09:44
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -101,11 +101,11 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
             
             class HandoffRewriteData(BaseModel):
-                rewrite_intent: str
+                latest_rewrite_intent: str
             
             async def on_handoff(ctx: RunContextWrapper[None], input_data: HandoffRewriteData):
-                get_rewrite_context().rewrite_intent = input_data.rewrite_intent
-                log.info(f"Rewrite agent called with intent: {input_data.rewrite_intent}")
+                get_rewrite_context().rewrite_intent = input_data.latest_rewrite_intent
+                log.info(f"Rewrite agent called with intent: {input_data.latest_rewrite_intent}")
             
             handoff_rewrite = handoff(
                 agent=workflow_rewrite_agent_instance,

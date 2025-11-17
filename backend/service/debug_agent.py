@@ -13,20 +13,12 @@ from ..service.parameter_tools import *
 from ..service.link_agent_tools import *
 from ..dao.workflow_table import get_workflow_data, save_workflow_data
 from ..utils.request_context import get_session_id, get_config
-from pydantic import BaseModel
-from agents import handoff, RunContextWrapper
-from agents.extensions import handoff_filters
 
 # Import ComfyUI internal modules
 import uuid
 from ..utils.logger import log
 # Load environment variables from server.env
 
-class DebugInputData(BaseModel):
-    error_message: str    
-
-async def on_debug_handoff(ctx: RunContextWrapper[None], input_data: DebugInputData):
-    print(f"Debug agent called with error message: {input_data.error_message}")
 
 @function_tool
 async def run_workflow() -> str:
@@ -311,10 +303,7 @@ Start by validating the workflow to see its current state.""",
             **Remember**: Focus on making necessary structural changes, then ALWAYS transfer back to let the coordinator verify the workflow.
             """,
             tools=[get_current_workflow, get_node_info, update_workflow],
-            handoffs=[handoff(
-                agent=agent,
-                input_filter=handoff_filters.remove_all_tools,
-            )],
+            handoffs=[agent],
             config={
                 "max_tokens": 8192,
                 **config
@@ -406,10 +395,7 @@ Start by validating the workflow to see its current state.""",
             """,
             tools=[analyze_missing_connections, apply_connection_fixes,
                    get_current_workflow, get_node_info],
-            handoffs=[handoff(
-                agent=agent,
-                input_filter=handoff_filters.remove_all_tools,
-            )],
+            handoffs=[agent],
             config={
                 "max_tokens": 8192,
                 **config
@@ -504,29 +490,14 @@ Start by validating the workflow to see its current state.""",
             """,
             tools=[find_matching_parameter_value, get_model_files, 
                 suggest_model_download, update_workflow_parameter, get_current_workflow],
-            handoffs=[handoff(
-                agent=agent,
-                input_filter=handoff_filters.remove_all_tools,
-            )],
+            handoffs=[agent],
             config={
                 "max_tokens": 8192,
                 **config
             }
         )
 
-        agent.handoffs = [handoff(
-            agent=agent,
-            on_handoff=on_debug_handoff,
-            input_type=DebugInputData,
-        ), handoff(
-            agent=workflow_bugfix_default_agent,
-            on_handoff=on_debug_handoff,
-            input_type=DebugInputData,
-        ), handoff(
-            agent=parameter_agent,
-            on_handoff=on_debug_handoff,
-            input_type=DebugInputData,
-        )]
+        agent.handoffs = [link_agent, workflow_bugfix_default_agent, parameter_agent]
 
         # Initial message to start the debugging process
         messages = [{"role": "user", "content": f"Validate and debug this ComfyUI workflow."}]
