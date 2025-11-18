@@ -110,6 +110,7 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             handoff_rewrite = handoff(
                 agent=workflow_rewrite_agent_instance,
                 input_type=HandoffRewriteData,
+                input_filter=handoff_filters.remove_all_tools,
                 on_handoff=on_handoff,
             )
             
