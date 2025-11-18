@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-17 15:09:44
+LastEditTime: 2025-11-18 19:18:30
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -63,6 +63,51 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
         tuple: (text, ext) where text is accumulated text and ext is structured data
     """
     try:
+        # ------------------------------------------------------------------
+        # Sanitize messages to avoid provider validation errors
+        # Some backends (e.g. Bedrock via ConverseStream) reject requests if
+        # the final assistant message content ends with trailing whitespace.
+        # We defensively strip only *trailing* whitespace from assistant text
+        # segments, preserving internal spaces and formatting.
+        # ------------------------------------------------------------------
+        def _strip_trailing_whitespace_from_messages(
+            msgs: List[Dict[str, Any]]
+        ) -> List[Dict[str, Any]]:
+            cleaned: List[Dict[str, Any]] = []
+            for msg in msgs:
+                role = msg.get("role")
+                # Only touch assistant messages to minimize impact
+                if role != "assistant":
+                    cleaned.append(msg)
+                    continue
+
+                msg_copy = dict(msg)
+                content = msg_copy.get("content")
+
+                # Simple string content
+                if isinstance(content, str):
+                    msg_copy["content"] = content.rstrip()
+                # OpenAI / Agents style list content blocks
+                elif isinstance(content, list):
+                    new_content = []
+                    for part in content:
+                        if isinstance(part, dict):
+                            part_copy = dict(part)
+                            # Common text block key is "text"
+                            text_val = part_copy.get("text")
+                            if isinstance(text_val, str):
+                                part_copy["text"] = text_val.rstrip()
+                            new_content.append(part_copy)
+                        else:
+                            new_content.append(part)
+                    msg_copy["content"] = new_content
+
+                cleaned.append(msg_copy)
+
+            return cleaned
+
+        messages = _strip_trailing_whitespace_from_messages(messages)
+
         # Get session_id and config from request context
         session_id = get_session_id()
         config = get_config()
@@ -141,9 +186,7 @@ You must adhere to the following constraints to complete the task:
 - If you cannot find the information needed to answer a query, consider using bing_search to obtain relevant information. For example, if search_node tool cannot find the node, you can use bing_search to obtain relevant information about those nodes or components.
 - If search_node tool cannot find the node, you MUST use bing_search to obtain relevant information about those nodes or components.
 
-- **DEBUG Intent** - When the user's intent is to debug workflow execution problems, runtime errors, or troubleshoot failed workflows (keywords: "debug", "调试", "工作流报错", "执行失败", "workflow failed", "node error", "runtime error", "不能运行", "出错了"), respond with: "Please click the 🪲 button in the bottom right corner to trigger debug"
-
-- **WORKFLOW REWRITE Intent** - [Critical!] When the user's intent is to functionally modify, enhance, or add NEW features to the current workflow OR modify the current canvas (keywords: "修改当前工作流", "更新工作流", "在当前工作流中添加", "添加功能", "enhance current workflow", "modify workflow", "add to current workflow", "update current workflow", "添加LoRA", "加个upscale", "add upscaling", "修改当前画布", "更新画布", "在画布中", "modify current canvas", "update canvas", "change canvas"), you MUST handoff to the Workflow Rewrite Agent immediately. This is for feature enhancements, not error fixes.
+- [Critical!] **WORKFLOW REWRITE Intent** - When the user's intent is to functionally modify, enhance, or add NEW features to the current workflow OR modify the current canvas (keywords: "修改当前工作流", "更新工作流", "在当前工作流中添加", "添加功能", "enhance current workflow", "modify workflow", "add to current workflow", "update current workflow", "添加LoRA", "加个upscale", "add upscaling", "修改当前画布", "更新画布", "在画布中", "modify current canvas", "update canvas", "change canvas"), you MUST always handoff to the Workflow Rewrite Agent immediately.
 
 - **ERROR MESSAGE ANALYSIS** - When a user pastes specific error text/logs (containing terms like "Failed", "Error", "Traceback", or stack traces), prioritize providing troubleshooting help rather than invoking search tools. Follow these steps:
   1. Analyze the error to identify the root cause (error type, affected component, missing dependencies, etc.)

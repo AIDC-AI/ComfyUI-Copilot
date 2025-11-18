@@ -87,7 +87,7 @@ def create_workflow_rewrite_agent():
       
         **Tool Usage Guidelines:**
             - get_current_workflow(): Get current workflow from checkpoint or session
-            - search_node(node_class, keywords, limit): 优先使用的节点检索工具。
+            - search_node_local(node_class, keywords, limit): 优先使用的本地已经安装好的节点的检索工具。
               * 当你已经有候选节点类名（例如从其它工具返回的 class_name，如 "LayerColor: BrightnessContrastV2"）时，将该类名作为 node_class 传入，keywords 传入与功能相关的少量关键词（如 ["brightness", "contrast"]），工具会先通过 /api/object_info/{node_class} 精确获取该节点的完整定义，如果命中则直接返回该节点信息。
               * 当你只有功能/参数描述而没有明确类名时，可以将 node_class 置为空字符串 ""，仅在 keywords 中传入 1～3 个尽量具体的英文或中文关键词（例如 "brightness"、"contrast"、"saturation"、"锐化" 等），工具会在所有节点中按名称、显示名、分类及输入参数名进行模糊搜索，返回带有 class_name、hit_params 和 score 的候选列表。
               * 避免在 keywords 中使用过于宽泛的词（例如 "image"、"图像" 等），否则会导致搜索结果过多且不精确。
@@ -110,7 +110,7 @@ def create_workflow_rewrite_agent():
 
         始终以用户的实际需求为导向，提供专业、准确、高效的工作流改写服务。
         """,
-        tools=[get_rewrite_expert_by_name, get_current_workflow, search_node, get_node_infos, update_workflow, remove_node],
+        tools=[get_rewrite_expert_by_name, get_current_workflow, search_node_local, get_node_infos, update_workflow, remove_node],
         config={
             "max_tokens": 8192,
             ** config
