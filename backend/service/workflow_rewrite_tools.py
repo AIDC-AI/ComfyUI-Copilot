@@ -110,10 +110,10 @@ async def get_node_infos(node_class_list: list[str]) -> str:
         return json.dumps({"error": f"Failed to get node infos of {','.join(node_class_list)}: {str(e)}"})
 
 @function_tool
-async def search_node_info(node_class: str = "", keywords: list[str] = None, limit: int = 10) -> str:
+async def search_node(node_class: str = "", keywords: list[str] = None, limit: int = 10) -> str:
     """
     综合节点搜索工具（node_class + keywords 联合检索）：
-    1. 优先使用 node_class 按节点类名精确查询 /api/object_info/{node_class}。
+    1. 优先使用 node_class 按节点类名精确查询。
     2. 如果没有命中，则在全部节点中使用 node_class 和 keywords 做联合模糊搜索：
        - 关键词会在节点类名、名称、显示名、分类、描述以及输入参数名中匹配。
        - 关键词应该尽量具体（例如 "brightness"、"contrast"、"saturation"、"sharpness"），
