@@ -106,8 +106,8 @@ WORKFLOW_MODEL_NAME = os.getenv("WORKFLOW_MODEL_NAME", "us.anthropic.claude-sonn
 LLM_DEFAULT_BASE_URL = "https://comfyui-copilot-server.onrender.com/v1"
 
 # LLM-related env defaults (used as fallback when request config does not provide values)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or None
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
+OPENAI_API_KEY = os.getenv("CC_OPENAI_API_KEY") or None
+OPENAI_BASE_URL = os.getenv("CC_OPENAI_BASE_URL") or None
 WORKFLOW_LLM_API_KEY = os.getenv("WORKFLOW_LLM_API_KEY") or None
 WORKFLOW_LLM_BASE_URL = os.getenv("WORKFLOW_LLM_BASE_URL") or None
 # If WORKFLOW_LLM_MODEL is not set, fall back to WORKFLOW_MODEL_NAME
