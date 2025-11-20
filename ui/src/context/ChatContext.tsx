@@ -108,8 +108,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [modelDownloadMap, setModelDownloadMap] = useState<Record<string, DownloadProgress>>({});
   const currentDownloadingId = useRef<string[]>([]);
 
-  // const isDark = app.extensionManager.setting.get('Comfy.ColorPalette') === 'dark';
-
   const getProgress = async (id: string) => {
     const response = await fetch(`/api/download-progress/${id}`)
     const res = await response.json()
@@ -173,10 +171,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(`messages_${state.sessionId}`, JSON.stringify(state.messages));
     }
   }, [state.messages, state.sessionId]);
-
-  // useEffect(() => {
-  //   console.log('--->', app.extensionManager.setting.get('Comfy.ColorPalette'))
-  // }, [app.extensionManager.setting.get('Comfy.ColorPalette')])
 
   return (
     <ConfigProvider
