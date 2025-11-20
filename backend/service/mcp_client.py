@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-18 19:18:30
+LastEditTime: 2025-11-19 20:16:03
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -34,6 +34,7 @@ except Exception:
 
 from ..agent_factory import create_agent
 from ..service.workflow_rewrite_agent import create_workflow_rewrite_agent
+from ..service.message_memory import message_memory_optimize
 from ..utils.request_context import get_rewrite_context, get_session_id, get_config
 from ..utils.logger import log
 from openai.types.responses import ResponseTextDeltaEvent
@@ -116,6 +117,11 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             raise ValueError("No session_id found in request context")
         if not config:
             raise ValueError("No config found in request context")
+        
+        # Optimize messages with memory compression
+        log.info(f"[MCP] Original messages count: {len(messages)}")
+        messages = message_memory_optimize(session_id, messages)
+        log.info(f"[MCP] Optimized messages count: {len(messages)}, messages: {messages}")
         
         # Create MCP server instances
         mcp_server = MCPServerSse(
