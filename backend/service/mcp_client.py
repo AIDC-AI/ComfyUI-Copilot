@@ -157,6 +157,12 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             async def on_handoff(ctx: RunContextWrapper[None], input_data: HandoffRewriteData):
                 get_rewrite_context().rewrite_intent = input_data.latest_rewrite_intent
                 log.info(f"Rewrite agent called with intent: {input_data.latest_rewrite_intent}")
+                
+                # 重置消息上下文，只保留intent作为唯一的用户输入
+                # 这样 RewriteAgent 就不会看到之前的全局对话历史，只专注于当前的修改诉求
+                if hasattr(ctx, 'messages') and isinstance(ctx.messages, list):
+                    ctx.messages.clear()
+                    ctx.messages.append({"role": "user", "content": input_data.latest_rewrite_intent})
             
             handoff_rewrite = handoff(
                 agent=workflow_rewrite_agent_instance,
