@@ -2,13 +2,13 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-31 19:38:08
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-09-03 11:00:57
+LastEditTime: 2025-11-20 17:51:33
 FilePath: /comfyui_copilot/backend/agent_factory.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-import os
+
 try:
-    from agents import Agent, OpenAIChatCompletionsModel, ModelSettings
+    from agents import Agent, OpenAIChatCompletionsModel, ModelSettings, Runner, set_trace_processors, set_tracing_disabled, set_default_openai_api
     if not hasattr(__import__('agents'), 'Agent'):
         raise ImportError
 except Exception:
@@ -28,6 +28,7 @@ from openai import AsyncOpenAI
 
 from agents._config import set_default_openai_api
 from agents.tracing import set_tracing_disabled
+import asyncio
 # from .utils.logger import log
 
 # def load_env_config():
@@ -46,7 +47,9 @@ from agents.tracing import set_tracing_disabled
 # load_env_config()
 
 set_default_openai_api("chat_completions")
-set_tracing_disabled(True)
+set_tracing_disabled(False)
+
+
 def create_agent(**kwargs) -> Agent:
     # 通过用户配置拿/环境变量
     config = kwargs.pop("config") if "config" in kwargs else {}
@@ -59,13 +62,13 @@ def create_agent(**kwargs) -> Agent:
     # Determine base URL and API key
     base_url = LLM_DEFAULT_BASE_URL
     api_key = get_comfyui_copilot_api_key() or ""
-    
+
     if config:
         if config.get("openai_base_url") and config.get("openai_base_url") != "":
             base_url = config.get("openai_base_url")
         if config.get("openai_api_key") and config.get("openai_api_key") != "":
             api_key = config.get("openai_api_key")
-    
+
     # Check if this is LMStudio and adjust API key handling
     is_lmstudio = is_lmstudio_url(base_url)
     if is_lmstudio and not api_key:
