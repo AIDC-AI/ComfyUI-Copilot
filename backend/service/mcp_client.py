@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-19 20:16:03
+LastEditTime: 2025-11-20 17:44:52
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -221,6 +221,13 @@ You must adhere to the following constraints to complete the task:
             # The caller has already handled image formatting within messages
             agent_input = messages
             log.info(f"-- Processing {len(messages)} messages")
+
+            from agents import Agent, Runner, set_trace_processors, set_tracing_disabled, set_default_openai_api
+            from langsmith.wrappers import OpenAIAgentsTracingProcessor
+
+            set_tracing_disabled(False)
+            set_default_openai_api("chat_completions")
+            set_trace_processors([OpenAIAgentsTracingProcessor()])
 
             result = Runner.run_streamed(
                 agent,
