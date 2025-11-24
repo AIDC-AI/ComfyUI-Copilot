@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-24 17:10:23
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-09-30 11:03:37
+LastEditTime: 2025-11-24 20:50:57
 FilePath: /comfyui_copilot/backend/service/workflow_rewrite_agent.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -61,7 +61,7 @@ def create_workflow_rewrite_agent():
         {}
         """.format(language, json.dumps(get_rewrite_export_schema())) + """
 
-        你可以根据用户的需求，从上面的专家经验中选择一个或多个经验，并结合经验内容进行工作流改写。
+        你可以根据用户的需求，从上面的专家经验中选择一个或多个经验(call get_rewrite_expert_by_name(name_list))，并结合经验内容进行工作流改写。
         
         ## 复杂工作流处理原则
         复杂工作流实际上是多个简单的功能性工作流的组合。例如：文生图→抠图取主体→图生图生成背景。
@@ -87,6 +87,7 @@ def create_workflow_rewrite_agent():
       
         **Tool Usage Guidelines:**
             - get_current_workflow(): Get current workflow from checkpoint or session
+            - get_rewrite_expert_by_name(name_list): Get rewrite expert by name list, use before search_node_local.
             - search_node_local(node_class, keywords, limit): 优先使用的本地已经安装好的节点的检索工具。
               * 当你已经有候选节点类名（例如从其它工具返回的 class_name，如 "LayerColor: BrightnessContrastV2"）时，将该类名作为 node_class 传入，keywords 传入与功能相关的少量关键词（如 ["brightness", "contrast"]），工具会先通过 /api/object_info/{node_class} 精确获取该节点的完整定义，如果命中则直接返回该节点信息。
               * 当你只有功能/参数描述而没有明确类名时，可以将 node_class 置为空字符串 ""，仅在 keywords 中传入 1～3 个尽量具体的英文或中文关键词（例如 "brightness"、"contrast"、"saturation"、"锐化" 等），工具会在所有节点中按名称、显示名、分类及输入参数名进行模糊搜索，返回带有 class_name、hit_params 和 score 的候选列表。
