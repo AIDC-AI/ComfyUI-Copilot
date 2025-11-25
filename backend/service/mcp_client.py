@@ -64,13 +64,6 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
         tuple: (text, ext) where text is accumulated text and ext is structured data
     """
     try:
-        # ------------------------------------------------------------------
-        # Sanitize messages to avoid provider validation errors
-        # Some backends (e.g. Bedrock via ConverseStream) reject requests if
-        # the final assistant message content ends with trailing whitespace.
-        # We defensively strip only *trailing* whitespace from assistant text
-        # segments, preserving internal spaces and formatting.
-        # ------------------------------------------------------------------
         def _strip_trailing_whitespace_from_messages(
             msgs: List[Dict[str, Any]]
         ) -> List[Dict[str, Any]]:
@@ -276,12 +269,11 @@ You must adhere to the following constraints to complete the task:
             agent_input = messages
             log.info(f"-- Processing {len(messages)} messages")
 
-            from agents import Agent, Runner, set_trace_processors, set_tracing_disabled, set_default_openai_api
-            from langsmith.wrappers import OpenAIAgentsTracingProcessor
-
-            set_tracing_disabled(False)
-            set_default_openai_api("chat_completions")
-            set_trace_processors([OpenAIAgentsTracingProcessor()])
+            # from agents import Agent, Runner, set_trace_processors, set_tracing_disabled, set_default_openai_api
+            # from langsmith.wrappers import OpenAIAgentsTracingProcessor
+            # set_tracing_disabled(False)
+            # set_default_openai_api("chat_completions")
+            # set_trace_processors([OpenAIAgentsTracingProcessor()])
 
             result = Runner.run_streamed(
                 agent,
