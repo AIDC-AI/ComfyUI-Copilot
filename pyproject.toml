@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI-Copilot"
 description = "Your Intelligent Assistant for Comfy-UI."
-version = "2.0.25"
+version = "2.0.26"
 license = {file = "LICENSE"}
 
 [project.urls]
@@ -9,6 +9,6 @@ Repository = "https://github.com/AIDC-AI/ComfyUI-Copilot"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = "yx9966"
+PublisherId = "ai-business-hql"
 DisplayName = "ComfyUI-Copilot"
 Icon = ""
