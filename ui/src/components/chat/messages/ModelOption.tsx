@@ -145,32 +145,32 @@ const ModelOption: React.FC<IProps> = (props) => {
       title: thMap.dir,
       key: 'directory',
       render: (_, record) => (
-        // <select
-        //   value={selectedPathMap[record.Id]}
-        //   onChange={(e) => handleSelectedPath(record.Id, e.target.value)}
-        //   className="px-1.5 py-0.5 text-xs rounded-md bg-gray-100
-        //           text-gray-700 focus:outline-none focus:ring-2 
-        //           focus:ring-blue-500 hover:!bg-gray-50"
-        // >
-        //   {modelPaths?.map((path: string) => (
-        //       <option value={path} key={path}>{path}</option>
-        //   ))}
-        // </select>
-        <Select 
+        <select
           value={selectedPathMap[record.Id]}
-          onChange={(value) => handleSelectedPath(record.Id, value)}
-          options={modelPaths?.map((path: string) => ({
-            label: path,
-            value: path
-          }))}
-          className="w-full"
-          suffixIcon={<div className="text-gray-600">
-            <svg viewBox="0 0 1024 1024" className="w-5 h-5" fill="currentColor">
-              <path d="M512 714.666667c-8.533333 0-17.066667-2.133333-23.466667-8.533334l-341.333333-341.333333c-12.8-12.8-12.8-32 0-44.8 12.8-12.8 32-12.8 44.8 0l320 317.866667 317.866667-320c12.8-12.8 32-12.8 44.8 0 12.8 12.8 12.8 32 0 44.8L533.333333 704c-4.266667 8.533333-12.8 10.666667-21.333333 10.666667z">
-              </path>
-            </svg>
-          </div>}
-        />
+          onChange={(e) => handleSelectedPath(record.Id, e.target.value)}
+          className="px-1.5 py-0.5 text-xs rounded-md bg-gray-100
+                  text-gray-700 focus:outline-none focus:ring-2 
+                  focus:ring-blue-500 hover:!bg-gray-50"
+        >
+          {modelPaths?.map((path: string) => (
+              <option value={path} key={path}>{path}</option>
+          ))}
+        </select>
+        // <Select 
+        //   value={selectedPathMap[record.Id]}
+        //   onChange={(value) => handleSelectedPath(record.Id, value)}
+        //   options={modelPaths?.map((path: string) => ({
+        //     label: path,
+        //     value: path
+        //   }))}
+        //   className="w-full"
+        //   suffixIcon={<div className="text-gray-600">
+        //     <svg viewBox="0 0 1024 1024" className="w-5 h-5" fill="currentColor">
+        //       <path d="M512 714.666667c-8.533333 0-17.066667-2.133333-23.466667-8.533334l-341.333333-341.333333c-12.8-12.8-12.8-32 0-44.8 12.8-12.8 32-12.8 44.8 0l320 317.866667 317.866667-320c12.8-12.8 32-12.8 44.8 0 12.8 12.8 12.8 32 0 44.8L533.333333 704c-4.266667 8.533333-12.8 10.666667-21.333333 10.666667z">
+        //       </path>
+        //     </svg>
+        //   </div>}
+        // />
       )
     },
     {
