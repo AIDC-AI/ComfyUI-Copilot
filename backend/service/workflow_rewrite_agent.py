@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-24 17:10:23
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-24 20:50:57
+LastEditTime: 2025-11-24 20:56:38
 FilePath: /comfyui_copilot/backend/service/workflow_rewrite_agent.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -61,7 +61,7 @@ def create_workflow_rewrite_agent():
         {}
         """.format(language, json.dumps(get_rewrite_export_schema())) + """
 
-        你可以根据用户的需求，从上面的专家经验中选择一个或多个经验(call get_rewrite_expert_by_name(name_list))，并结合经验内容进行工作流改写。
+        你必须先根据用户的需求，从上面的专家经验中选择经验(call get_rewrite_expert_by_name(name_list))，再结合经验内容进行工作流改写，但如果没有任何相关经验，则不参考专家经验。
         
         ## 复杂工作流处理原则
         复杂工作流实际上是多个简单的功能性工作流的组合。例如：文生图→抠图取主体→图生图生成背景。

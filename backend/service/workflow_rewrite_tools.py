@@ -2,6 +2,7 @@
 
 import json
 import time
+import copy
 from typing import Dict, Any, Optional
 
 try:
@@ -98,13 +99,28 @@ async def get_node_info(node_class: str) -> str:
 
 @function_tool
 async def get_node_infos(node_class_list: list[str]) -> str:
-    """获取多个节点的详细信息，包括输入输出参数。只做最小化有必要的查询，不要查询所有节点。尽量不要超过5个"""
+    """获取多个节点的详细信息，包括输入输出参数。只做最小化有必要的查询，不要查询很常见的LLM已知用法的节点。尽量不要超过5个"""
     try:
         object_info = await get_object_info()
         node_infos = {}
         for node_class in node_class_list:
             if node_class in object_info:
-                node_infos[node_class] = object_info[node_class]
+                # Deep copy to avoid modifying the original cached object info
+                node_data = copy.deepcopy(object_info[node_class])
+                
+                # Truncate long lists in input parameters to save context
+                input_data = node_data.get("input", {})
+                for req_opt in ["required", "optional"]:
+                    params = input_data.get(req_opt, {})
+                    for param_name, param_config in params.items():
+                        # param_config is typically [type_or_list, config_dict]
+                        if isinstance(param_config, list) and len(param_config) > 0:
+                            # Check if the first element is a list (which means it's a selection list)
+                            if isinstance(param_config[0], list):
+                                if len(param_config[0]) > 3:
+                                    param_config[0] = param_config[0][:3]
+                
+                node_infos[node_class] = node_data
         return json.dumps(node_infos)
     except Exception as e:
         return json.dumps({"error": f"Failed to get node infos of {','.join(node_class_list)}: {str(e)}"})
@@ -116,8 +132,9 @@ async def search_node_local(node_class: str = "", keywords: list[str] = None, li
     1. 优先使用 node_class 按节点类名精确查询。
     2. 如果没有命中，则在全部节点中使用 node_class 和 keywords 做联合模糊搜索：
        - 关键词会在节点类名、名称、显示名、分类、描述以及输入参数名中匹配。
+       - 关键词是英文。
        - 关键词应该尽量具体（例如 "brightness"、"contrast"、"saturation"、"sharpness"），
-         避免使用过于宽泛的词（例如 "image"、"图像" 等），以减少噪声结果。
+         避免使用过于宽泛的词（例如 "image" 等），以减少噪声结果。
     """
     try:
         node_class_str = (node_class or "").strip()
