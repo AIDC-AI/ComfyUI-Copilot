@@ -184,7 +184,7 @@ const ModelOption: React.FC<IProps> = (props) => {
       title: thMap.updateTime,
       key: 'updateTime',
       render: (_, record) => (
-        <div>{record.LastUpdatedTime ? new Date(record.LastUpdatedTime).toLocaleString() : ''}</div>
+        <div>{record.LastUpdatedTime ? new Date(record.LastUpdatedTime*1000).toLocaleString() : ''}</div>
       )
     },
     {
