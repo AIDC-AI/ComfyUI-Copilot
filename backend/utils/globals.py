@@ -99,11 +99,11 @@ def set_comfyui_copilot_api_key(api_key: str) -> None:
     _global_state.set('comfyui_copilot_api_key', api_key)
 
 
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "https://comfyui-copilot-server.onrender.com")
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "https://comfyui-copilot-server-pre.onrender.com")
 LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1"
 WORKFLOW_MODEL_NAME = os.getenv("WORKFLOW_MODEL_NAME", "us.anthropic.claude-sonnet-4-20250514-v1:0")
 # WORKFLOW_MODEL_NAME = "gpt-5-2025-08-07-GlobalStandard"
-LLM_DEFAULT_BASE_URL = "https://comfyui-copilot-server.onrender.com/v1"
+LLM_DEFAULT_BASE_URL = "https://comfyui-copilot-server-pre.onrender.com/v1"
 
 # LLM-related env defaults (used as fallback when request config does not provide values)
 OPENAI_API_KEY = os.getenv("CC_OPENAI_API_KEY") or None
