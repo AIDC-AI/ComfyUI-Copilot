@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-20 17:44:52
+LastEditTime: 2025-11-25 15:37:50
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -20,7 +20,7 @@ try:
     from agents.mcp import MCPServerSse
     from agents.run import Runner
     from agents.tracing import set_tracing_disabled
-    from agents import handoff, RunContextWrapper
+    from agents import handoff, RunContextWrapper, HandoffInputData
     from agents.extensions import handoff_filters
     if not hasattr(__import__('agents'), 'Agent'):
         raise ImportError
@@ -157,17 +157,52 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             async def on_handoff(ctx: RunContextWrapper[None], input_data: HandoffRewriteData):
                 get_rewrite_context().rewrite_intent = input_data.latest_rewrite_intent
                 log.info(f"Rewrite agent called with intent: {input_data.latest_rewrite_intent}")
-                
-                # 重置消息上下文，只保留intent作为唯一的用户输入
-                # 这样 RewriteAgent 就不会看到之前的全局对话历史，只专注于当前的修改诉求
-                if hasattr(ctx, 'messages') and isinstance(ctx.messages, list):
-                    ctx.messages.clear()
-                    ctx.messages.append({"role": "user", "content": input_data.latest_rewrite_intent})
             
+            def rewrite_handoff_input_filter(data: HandoffInputData) -> HandoffInputData:
+                """Filter to replace message history with just the rewrite intent"""
+                intent = get_rewrite_context().rewrite_intent
+                log.info(f"Rewrite handoff filter called. Intent: {intent}")
+                
+                # Construct a new HandoffInputData with cleared history
+                # We keep new_items (which contains the handoff tool call) so the agent sees the immediate trigger
+                # But we clear input_history to remove the conversation context
+                
+                new_history = ()
+                try:
+                    # Attempt to find a user message in history to clone/modify
+                    # This is a best-effort attempt to make the agent see the intent as a user message
+                    for item in data.input_history:
+                        # Check if item looks like a user message (has role='user')
+                        if hasattr(item, 'role') and getattr(item, 'role') == 'user':
+                             # Try to create a copy with new content if it's a Pydantic model
+                             if hasattr(item, 'model_copy'):
+                                 # Pydantic V2
+                                 new_item = item.model_copy(update={"content": intent})
+                                 new_history = (new_item,)
+                                 log.info("Successfully constructed new user message item for handoff (Pydantic V2)")
+                                 break
+                             elif hasattr(item, 'copy'):
+                                 # Pydantic V1
+                                 new_item = item.copy(update={"content": intent})
+                                 new_history = (new_item,)
+                                 log.info("Successfully constructed new user message item for handoff (Pydantic V1)")
+                                 break
+                except Exception as e:
+                    log.warning(f"Failed to construct user message item: {e}")
+                
+                # If we couldn't construct a user message, we return empty history.
+                # The agent will still see the handoff tool call in new_items, which contains the intent.
+                
+                return HandoffInputData(
+                    input_history=new_history,
+                    pre_handoff_items=(), # Clear pre-handoff items
+                    new_items=tuple(data.new_items), # Keep the handoff tool call
+                )
+
             handoff_rewrite = handoff(
                 agent=workflow_rewrite_agent_instance,
                 input_type=HandoffRewriteData,
-                input_filter=handoff_filters.remove_all_tools,
+                input_filter=rewrite_handoff_input_filter,
                 on_handoff=on_handoff,
             )
             
