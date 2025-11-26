@@ -9,6 +9,6 @@ Repository = "https://github.com/AIDC-AI/ComfyUI-Copilot"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = "ai-business-hql"
+PublisherId = "yx9966"
 DisplayName = "ComfyUI-Copilot"
 Icon = ""
