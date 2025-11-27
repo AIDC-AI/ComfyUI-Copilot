@@ -6,7 +6,7 @@ LastEditTime: 2025-11-25 15:37:50
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key
+from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key, DISABLE_WORKFLOW_GEN
 from .. import core
 import asyncio
 import os
@@ -199,6 +199,28 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
                 on_handoff=on_handoff,
             )
             
+            # Construct instructions based on DISABLE_WORKFLOW_GEN
+            if DISABLE_WORKFLOW_GEN:
+                workflow_creation_instruction = """
+**CASE 2: SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow`.
+"""
+                workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST call `recall_workflow` tool to find existing similar workflows.
+"""
+            else:
+                workflow_creation_instruction = """
+**CASE 2: CREATE NEW / SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow from scratch.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow` AND `gen_workflow`.
+"""
+                workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
+"""
+
             agent = create_agent(
                 name="ComfyUI-Copilot",
                 instructions=f"""You are a powerful AI assistant for designing image processing workflows, capable of automating problem-solving using tools and commands.
@@ -220,10 +242,7 @@ IF the user wants to:
 - DO NOT call any other tools (like search_node, gen_workflow).
 - DO NOT ask for more details. Just handoff.
 
-**CASE 2: CREATE NEW / SEARCH WORKFLOW**
-IF the user wants to find or generate a NEW workflow from scratch.
-- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
-- Action: Use `recall_workflow` AND `gen_workflow`.
+{workflow_creation_instruction}
 
 ### CONSTRAINT CHECKLIST
 You must adhere to the following constraints to complete the task:
@@ -241,7 +260,7 @@ You must adhere to the following constraints to complete the task:
 - Printing the entire content of a file is strictly prohibited, as such actions have high costs and can lead to unforeseen consequences.
 - Ensure that when you call a tool, you have obtained all the input variables for that tool, and do not fabricate any input values for it.
 - Respond with markdown, using a minimum of 3 heading levels (H3, H4, H5...), and when including images use the format ![alt text](url),
-- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
+{workflow_constraint}
 - When the user's intent is to query, return the query result directly without attempting to assist the user in performing operations.
 - When the user's intent is to get prompts for image generation (like Stable Diffusion). Use specific descriptive language with proper weight modifiers (e.g., (word:1.2)), prefer English terms, and separate elements with commas. Include quality terms (high quality, detailed), style specifications (realistic, anime), lighting (cinematic, golden hour), and composition (wide shot, close up) as needed. When appropriate, include negative prompts to exclude unwanted elements. Return words divided by commas directly without any additional text.
 - If you cannot find the information needed to answer a query, consider using bing_search to obtain relevant information. For example, if search_node tool cannot find the node, you can use bing_search to obtain relevant information about those nodes or components.
@@ -572,10 +591,25 @@ You must adhere to the following constraints to complete the task:
                     finished = True
                         
                 elif "recall_workflow" in tool_results and "gen_workflow" not in tool_results:
-                    # Only recall_workflow was called, don't return ext, keep finished=false
-                    log.info("Only recall_workflow was called, waiting for gen_workflow, not returning ext")
-                    ext = None
-                    finished = False  # This is the key: keep finished=false to wait for gen_workflow
+                    if DISABLE_WORKFLOW_GEN:
+                        # If generation is disabled, we don't wait for gen_workflow
+                        log.info("Only recall_workflow was called and generation is disabled, returning its result")
+                        recall_result = tool_results["recall_workflow"]
+                        if recall_result["data"] and len(recall_result["data"]) > 0:
+                            ext = [{
+                                "type": "workflow",
+                                "data": recall_result["data"]
+                            }]
+                            log.info(f"Returning {len(recall_result['data'])} workflows from recall_workflow")
+                        else:
+                            ext = None
+                            log.error("recall_workflow failed or returned no data")
+                        finished = True
+                    else:
+                        # Only recall_workflow was called, don't return ext, keep finished=false
+                        log.info("Only recall_workflow was called, waiting for gen_workflow, not returning ext")
+                        ext = None
+                        finished = False  # This is the key: keep finished=false to wait for gen_workflow
                     
                 elif "gen_workflow" in tool_results and "recall_workflow" not in tool_results:
                     # Only gen_workflow was called, return its result normally
