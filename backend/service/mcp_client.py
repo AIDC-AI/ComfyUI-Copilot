@@ -6,6 +6,7 @@ LastEditTime: 2025-11-25 15:37:50
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
+from ..service.workflow_rewrite_tools import get_current_workflow
 from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key, DISABLE_WORKFLOW_GEN
 from .. import core
 import asyncio
@@ -202,7 +203,7 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             # Construct instructions based on DISABLE_WORKFLOW_GEN
             if DISABLE_WORKFLOW_GEN:
                 workflow_creation_instruction = """
-**CASE 2: SEARCH WORKFLOW**
+**CASE 3: SEARCH WORKFLOW**
 IF the user wants to find or generate a NEW workflow.
 - Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
 - Action: Use `recall_workflow`.
@@ -212,7 +213,7 @@ IF the user wants to find or generate a NEW workflow.
 """
             else:
                 workflow_creation_instruction = """
-**CASE 2: CREATE NEW / SEARCH WORKFLOW**
+**CASE 3: CREATE NEW / SEARCH WORKFLOW**
 IF the user wants to find or generate a NEW workflow from scratch.
 - Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
 - Action: Use `recall_workflow` AND `gen_workflow`.
@@ -241,6 +242,16 @@ IF the user wants to:
 - You MUST IMMEDIATELY handoff to the `Workflow Rewrite Agent`.
 - DO NOT call any other tools (like search_node, gen_workflow).
 - DO NOT ask for more details. Just handoff.
+
+**CASE 2: ANALYZE CURRENT WORKFLOW**
+IF the user wants to:
+- Analyze, explain, or understand the current workflow structure/logic.
+- Ask questions about the current workflow (e.g., "how does this work?", "explain the workflow").
+- Keywords: "analyze", "explain", "understand", "how it works", "workflow structure", "分析", "解释", "怎么工作的", "解读".
+
+**ACTION:**
+- You MUST call `get_current_workflow` to retrieve the workflow details.
+- Then, based on the returned workflow data, provide a detailed analysis or explanation to the user.
 
 {workflow_creation_instruction}
 
@@ -280,6 +291,7 @@ You must adhere to the following constraints to complete the task:
                 """,
                 mcp_servers=server_list,
                 handoffs=[handoff_rewrite],
+                tools=[get_current_workflow],
                 config=config
             )
 
