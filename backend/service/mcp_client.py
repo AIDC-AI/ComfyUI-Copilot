@@ -45,8 +45,16 @@ except Exception:
 from ..agent_factory import create_agent
 from ..service.workflow_rewrite_agent import create_workflow_rewrite_agent
 from ..service.message_memory import message_memory_optimize
+from ..service.workflow_generation_tools import recall_workflow_local, gen_workflow_local, list_workflow_categories
+from ..utils.default_workflows import initialize_default_templates
 from ..utils.request_context import get_rewrite_context, get_session_id, get_config
 from ..utils.logger import log
+
+# Initialize default workflow templates on module load (only runs once)
+try:
+    initialize_default_templates()
+except Exception as e:
+    log.warning(f"Failed to initialize default workflow templates: {e}")
 from openai.types.responses import ResponseTextDeltaEvent
 from openai import APIError, RateLimitError
 from pydantic import BaseModel
@@ -222,27 +230,60 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
                 on_handoff=on_handoff,
             )
             
-            # Construct instructions based on DISABLE_WORKFLOW_GEN
-            if DISABLE_WORKFLOW_GEN:
-                workflow_creation_instruction = """
+            # Determine which workflow tools to use based on mode
+            # In local mode or when workflow generation is disabled, use local tools
+            workflow_tools = []
+            if DISABLE_EXTERNAL_CONNECTIONS or DISABLE_WORKFLOW_GEN:
+                # Use local workflow tools only
+                if DISABLE_WORKFLOW_GEN:
+                    # Only recall (search), no generation
+                    workflow_tools = [recall_workflow_local, list_workflow_categories]
+                    workflow_creation_instruction = """
 **CASE 3: SEARCH WORKFLOW**
 IF the user wants to find or generate a NEW workflow.
 - Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
-- Action: Use `recall_workflow`.
+- Action: Use `recall_workflow_local` to search existing templates.
 """
-                workflow_constraint = """
-- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST call `recall_workflow` tool to find existing similar workflows.
+                    workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST call `recall_workflow_local` tool to find existing similar workflows.
 """
-            else:
-                workflow_creation_instruction = """
+                else:
+                    # Both recall and generation available locally
+                    workflow_tools = [recall_workflow_local, gen_workflow_local, list_workflow_categories]
+                    workflow_creation_instruction = """
 **CASE 3: CREATE NEW / SEARCH WORKFLOW**
 IF the user wants to find or generate a NEW workflow from scratch.
 - Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
-- Action: Use `recall_workflow` AND `gen_workflow`.
+- Action: Use `recall_workflow_local` AND `gen_workflow_local` (local template-based generation).
 """
-                workflow_constraint = """
+                    workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow_local tool AND gen_workflow_local tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow_local to find existing similar workflows, then call gen_workflow_local to generate new workflow options from templates.
+"""
+                log.info(f"Using LOCAL workflow tools: {[t.__name__ for t in workflow_tools]}")
+            else:
+                # Non-local mode: MCP servers will provide recall_workflow and gen_workflow
+                workflow_tools = []
+                if DISABLE_WORKFLOW_GEN:
+                    workflow_creation_instruction = """
+**CASE 3: SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow` (from MCP server).
+"""
+                    workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST call `recall_workflow` tool to find existing similar workflows.
+"""
+                else:
+                    workflow_creation_instruction = """
+**CASE 3: CREATE NEW / SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow from scratch.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow` AND `gen_workflow` (from MCP server).
+"""
+                    workflow_constraint = """
 - [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
 """
+                log.info("Using EXTERNAL MCP workflow tools from server")
 
             agent = create_agent(
                 name="ComfyUI-Copilot-Local",
@@ -313,7 +354,7 @@ You must adhere to the following constraints to complete the task:
                 """,
                 mcp_servers=server_list,  # Empty list in local mode, populated in non-local mode
                 handoffs=[handoff_rewrite],
-                tools=[get_current_workflow],
+                tools=[get_current_workflow] + workflow_tools,  # Add local workflow tools when in local mode
                 config=config
             )
 
