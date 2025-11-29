@@ -25,7 +25,9 @@ from ..dao.workflow_table import save_workflow_data, get_workflow_data_by_id, up
 from ..service.mcp_client import comfyui_agent_invoke
 from ..utils.request_context import set_request_context, get_session_id
 from ..utils.logger import log
-from ..utils.modelscope_gateway import ModelScopeGateway
+from ..utils.modelscope_gateway import ModelScopeGateway  # Legacy support
+from ..utils.model_gateway import get_model_gateway
+from ..utils.model_source_base import ModelSourceType
 from ..utils.local_session_manager import get_session_manager
 import folder_paths
 
@@ -789,17 +791,26 @@ async def update_workflow_ui(request):
 @server.PromptServer.instance.routes.post("/api/download-model")
 async def download_model(request):
     """
-    Download model from ModelScope using SDK
+    Download model from multiple sources (HuggingFace, Civitai, Local, or legacy ModelScope).
+
+    Request JSON:
+        - id: Frontend tracking ID (required)
+        - model_id: Model identifier (required)
+        - model_type: Model type for destination folder (required)
+        - dest_dir: Optional destination directory override
+        - source: Optional source type - "huggingface", "civitai", "local", "modelscope"
+                 (auto-detected if not provided)
     """
     log.info("Received download-model request")
     req_json = await request.json()
-    
+
     try:
         id = req_json.get('id')
         model_id = req_json.get('model_id')
         model_type = req_json.get('model_type')
         dest_dir = req_json.get('dest_dir')
-        
+        source_str = req_json.get('source')  # Optional source override
+
         # 验证必需参数
         if not id:
             return web.json_response({
@@ -812,18 +823,29 @@ async def download_model(request):
                 "success": False,
                 "message": "Missing required parameter: model_id"
             })
-            
+
         if not model_type:
             return web.json_response({
                 "success": False,
                 "message": "Missing required parameter: model_type"
             })
-        
-        log.info(f"Downloading model: {model_id} (type: {model_type})")
-        
+
+        # Parse source type
+        source_type = None
+        if source_str:
+            source_map = {
+                "huggingface": ModelSourceType.HUGGINGFACE,
+                "civitai": ModelSourceType.CIVITAI,
+                "local": ModelSourceType.LOCAL,
+                "modelscope": ModelSourceType.MODELSCOPE,
+            }
+            source_type = source_map.get(source_str.lower())
+
+        log.info(f"Downloading model: {model_id} (type: {model_type}, source: {source_str or 'auto-detect'})")
+
         # 生成下载ID
         download_id = generate_download_id()
-        
+
         # 计算目标目录：优先使用传入的dest_dir，否则使用ComfyUI的models目录下对应类型
         resolved_dest_dir = None
         if dest_dir:
@@ -846,120 +868,83 @@ async def download_model(request):
         # 启动下载任务（异步执行）
         async def download_task():
             try:
-                # 调用下载方法 - 使用snapshot_download
-                from modelscope import snapshot_download
-                
-                # 创建进度回调包装器 - 实现ModelScope期望的接口
-                class ProgressWrapper:
-                    """Factory that returns a per-file progress object with update/end."""
-                    def __init__(self, download_id: str):
-                        self.download_id = download_id
+                # Get unified model gateway
+                gateway = get_model_gateway()
 
-                    def __call__(self, file_name: str, file_size: int):
-                        # Create a per-file progress tracker expected by ModelScope
-                        download_id = self.download_id
+                # Create progress wrapper for unified callback
+                def unified_progress_callback(downloaded: int, total: int):
+                    """Unified progress callback for all sources"""
+                    with download_lock:
+                        if download_id in download_progress:
+                            dp = download_progress[download_id]
+                            dp["progress"] = downloaded
+                            dp["file_size"] = total
+                            if total > 0:
+                                dp["percentage"] = round(downloaded * 100.0 / total, 2)
+                            # Calculate speed
+                            now = time.time()
+                            start_time = dp.get("start_time", now)
+                            elapsed = max(now - start_time, 1e-6)
+                            speed = downloaded / elapsed
+                            dp["speed"] = round(speed, 2)
 
-                        class _PerFileProgress:
-                            def __init__(self, fname: str, fsize: int):
-                                self.file_name = fname
-                                self.file_size = max(int(fsize or 0), 0)
-                                self.progress = 0
-                                self.last_update_time = time.time()
-                                self.last_downloaded = 0
-                                with download_lock:
-                                    if download_id in download_progress:
-                                        # If unknown size, keep 0 to avoid div-by-zero
-                                        download_progress[download_id]["file_size"] = self.file_size
-
-                            def update(self, size: int):
-                                try:
-                                    self.progress += int(size or 0)
-                                    now = time.time()
-                                    # Update global progress
-                                    with download_lock:
-                                        if download_id in download_progress:
-                                            dp = download_progress[download_id]
-                                            dp["progress"] = self.progress
-                                            if self.file_size > 0:
-                                                dp["percentage"] = round(self.progress * 100.0 / self.file_size, 2)
-                                            # speed
-                                            elapsed = max(now - self.last_update_time, 1e-6)
-                                            speed = (self.progress - self.last_downloaded) / elapsed
-                                            dp["speed"] = round(speed, 2)
-                                    self.last_update_time = now
-                                    self.last_downloaded = self.progress
-                                except Exception as e:
-                                    log.error(f"Error in progress update: {e}")
-
-                            def end(self):
-                                # Called by modelscope when a file finishes
-                                with download_lock:
-                                    if download_id in download_progress:
-                                        dp = download_progress[download_id]
-                                        if self.file_size > 0:
-                                            dp["progress"] = self.file_size
-                                            dp["percentage"] = 100.0
-                        
-                        return _PerFileProgress(file_name, file_size)
- 
-                progress_wrapper = ProgressWrapper(download_id)
-                
-                # 添加调试日志
-                log.info(f"Starting download with progress wrapper: {download_id}")
-                
-                # 在线程中执行阻塞的下载，避免阻塞事件循环
-                from functools import partial
-                local_dir = await asyncio.to_thread(
-                    partial(
-                        snapshot_download,
-                        model_id=model_id,
-                        cache_dir=resolved_dest_dir,
-                        progress_callbacks=[progress_wrapper]
-                    )
+                # Download using unified gateway
+                log.info(f"Starting download via model gateway: {download_id}")
+                local_path = await gateway.download_model(
+                    model_id=model_id,
+                    dest_dir=resolved_dest_dir,
+                    source_type=source_type,
+                    progress_callback=unified_progress_callback
                 )
-                
+
                 # 下载完成
                 progress_callback.end(success=True)
-                log.info(f"Model downloaded successfully to: {local_dir}")
+                log.info(f"Model downloaded successfully to: {local_path}")
 
-                # 下载后遍历目录，将所有重要权重/资源文件移动到最外层（与目录同级，即 resolved_dest_dir）
+                # Post-download processing: move files to top level if downloaded a directory
+                # (HuggingFace downloads directories, Civitai downloads single files)
                 try:
-                    moved_count = 0
-                    allowed_exts = {
-                        ".safetensors", ".ckpt", ".pt", ".pth", ".bin"
-                        # ".msgpack", ".json", ".yaml", ".yml", ".toml", ".png", ".onnx"
-                    }
-                    for root, dirs, files in os.walk(local_dir):
-                        for name in files:
-                            ext = os.path.splitext(name)[1].lower()
-                            if ext in allowed_exts:
-                                src_path = os.path.join(root, name)
-                                target_dir = resolved_dest_dir
-                                os.makedirs(target_dir, exist_ok=True)
-                                target_path = os.path.join(target_dir, name)
-                                # 如果已经在目标目录则跳过
-                                if os.path.abspath(os.path.dirname(src_path)) == os.path.abspath(target_dir):
-                                    continue
-                                # 处理重名情况：自动追加 _1, _2 ...
-                                if os.path.exists(target_path):
-                                    base, ext_real = os.path.splitext(name)
-                                    idx = 1
-                                    while True:
-                                        candidate = f"{base}_{idx}{ext_real}"
-                                        candidate_path = os.path.join(target_dir, candidate)
-                                        if not os.path.exists(candidate_path):
-                                            target_path = candidate_path
-                                            break
-                                        idx += 1
-                                shutil.move(src_path, target_path)
-                                moved_count += 1
-                    log.info(f"Moved {moved_count} files with extensions {sorted(list(allowed_exts))} to: {resolved_dest_dir}")
+                    if os.path.isdir(local_path):
+                        moved_count = 0
+                        allowed_exts = {
+                            ".safetensors", ".ckpt", ".pt", ".pth", ".bin"
+                            # ".msgpack", ".json", ".yaml", ".yml", ".toml", ".png", ".onnx"
+                        }
+                        for root, dirs, files in os.walk(local_path):
+                            for name in files:
+                                ext = os.path.splitext(name)[1].lower()
+                                if ext in allowed_exts:
+                                    src_path = os.path.join(root, name)
+                                    target_dir = resolved_dest_dir
+                                    os.makedirs(target_dir, exist_ok=True)
+                                    target_path = os.path.join(target_dir, name)
+                                    # 如果已经在目标目录则跳过
+                                    if os.path.abspath(os.path.dirname(src_path)) == os.path.abspath(target_dir):
+                                        continue
+                                    # 处理重名情况：自动追加 _1, _2 ...
+                                    if os.path.exists(target_path):
+                                        base, ext_real = os.path.splitext(name)
+                                        idx = 1
+                                        while True:
+                                            candidate = f"{base}_{idx}{ext_real}"
+                                            candidate_path = os.path.join(target_dir, candidate)
+                                            if not os.path.exists(candidate_path):
+                                                target_path = candidate_path
+                                                break
+                                            idx += 1
+                                    shutil.move(src_path, target_path)
+                                    moved_count += 1
+                        log.info(f"Moved {moved_count} files with extensions {sorted(list(allowed_exts))} to: {resolved_dest_dir}")
+                    else:
+                        log.info(f"Downloaded single file (no post-processing needed): {local_path}")
                 except Exception as move_err:
                     log.error(f"Post-download move failed: {move_err}")
-                
+
             except Exception as e:
                 progress_callback.fail(str(e))
                 log.error(f"Download failed: {str(e)}")
+                import traceback
+                traceback.print_exc()
 
         # 启动异步下载任务
         asyncio.create_task(download_task())
@@ -978,12 +963,12 @@ async def download_model(request):
         })
         
     except ImportError as e:
-        log.error(f"ModelScope SDK not installed: {str(e)}")
+        log.error(f"Required model download library not installed: {str(e)}")
         return web.json_response({
             "success": False,
-            "message": "ModelScope SDK not installed. Please install with: pip install modelscope"
+            "message": f"Required library not installed: {str(e)}. Please install huggingface_hub or modelscope as needed."
         })
-        
+
     except Exception as e:
         log.error(f"Error starting download: {str(e)}")
         import traceback
@@ -1067,7 +1052,15 @@ async def clear_download_progress(request):
 @server.PromptServer.instance.routes.get("/api/model-searchs")
 async def model_suggests(request):
     """
-    Get model search list by keyword
+    Get model search list by keyword from multiple sources (HuggingFace, Civitai, Local).
+
+    Query Parameters:
+        - keyword: Search keyword (required)
+        - page: Page number (optional, default: 1)
+        - page_size: Results per page (optional, default: 30)
+        - model_type: Filter by model type (optional)
+        - sort_by: Sort criterion - "downloads", "likes", "updated", "name" (optional)
+        - source: Filter by source - "huggingface", "civitai", "local" (optional, default: all)
     """
     log.info("Received model-search request")
     try:
@@ -1079,36 +1072,58 @@ async def model_suggests(request):
                 "message": "Missing required parameter: keyword"
             })
 
-        # 创建ModelScope网关实例
-        gateway = ModelScopeGateway()
+        # Parse optional parameters
+        page = int(request.query.get('page', 1))
+        page_size = int(request.query.get('page_size', 30))
+        model_type = request.query.get('model_type')
+        sort_by = request.query.get('sort_by')
+        source_filter = request.query.get('source')
 
-        suggests = gateway.search(name=keyword)
+        # Get unified model gateway
+        gateway = get_model_gateway()
 
-        list = suggests["data"] if suggests.get("data") else []
+        # Filter sources if specified
+        sources = None
+        if source_filter:
+            source_map = {
+                "huggingface": ModelSourceType.HUGGINGFACE,
+                "civitai": ModelSourceType.CIVITAI,
+                "local": ModelSourceType.LOCAL,
+            }
+            if source_filter.lower() in source_map:
+                sources = [source_map[source_filter.lower()]]
+
+        # Search using unified gateway
+        result = await gateway.search_unified(
+            query=keyword,
+            page=page,
+            page_size=page_size,
+            model_type=model_type,
+            sort_by=sort_by,
+            sources=sources
+        )
+
+        # Convert models to dict format
+        models_data = [model.to_dict() for model in result.models]
 
         return web.json_response({
             "success": True,
             "data": {
-                "searchs": list,
-                "total": len(list)
+                "searchs": models_data,
+                "total": result.total,
+                "page": result.page,
+                "page_size": result.page_size
             },
-            "message": f"Get searchs successfully"
+            "message": f"Found {result.total} models successfully"
         })
-        
-    except ImportError as e:
-        log.error(f"ModelScope SDK not installed: {str(e)}")
-        return web.json_response({
-            "success": False,
-            "message": "ModelScope SDK not installed. Please install with: pip install modelscope"
-        })  
 
     except Exception as e:
-        log.error(f"Error get model searchs: {str(e)}")
+        log.error(f"Error searching models: {str(e)}")
         import traceback
         traceback.print_exc()
         return web.json_response({
             "success": False,
-            "message": f"Get model searchs failed: {str(e)}"
+            "message": f"Model search failed: {str(e)}"
         })
         
 @server.PromptServer.instance.routes.get("/api/model-paths")
