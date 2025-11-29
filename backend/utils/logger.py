@@ -8,6 +8,7 @@ import sys
 import os
 import inspect
 from datetime import datetime
+import io
 
 
 class LocationFormatter(logging.Formatter):
@@ -35,8 +36,22 @@ def setup_logger():
     if logger.handlers:
         return logger
     
-    # Console handler with color support
-    console_handler = logging.StreamHandler(sys.stderr)
+    # Console handler with safer encoding handling on Windows consoles
+    # Prefer reconfiguring the existing stderr to replace unencodable chars
+    if hasattr(sys.stderr, "reconfigure"):
+        try:
+            sys.stderr.reconfigure(errors="replace")
+        except Exception:
+            pass
+        console_handler = logging.StreamHandler(sys.stderr)
+    else:
+        # Fallback: wrap the underlying buffer with a TextIOWrapper that replaces errors
+        try:
+            encoding = getattr(sys.stderr, "encoding", None) or "utf-8"
+            console_stream = io.TextIOWrapper(sys.stderr.buffer, encoding=encoding, errors="replace")
+            console_handler = logging.StreamHandler(console_stream)
+        except Exception:
+            console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(logging.DEBUG)
     
     # Console formatter with colors (simple format for better compatibility)
@@ -51,7 +66,8 @@ def setup_logger():
     file_handler = logging.handlers.RotatingFileHandler(
         os.path.join(log_dir, "comfyui_copilot.log"),
         maxBytes=10*1024*1024,  # 10MB
-        backupCount=7
+        backupCount=7,
+        encoding='utf-8'
     )
     file_handler.setLevel(logging.DEBUG)
     

@@ -1,4 +1,4 @@
-import { app } from "../../utils/comfyapp";
+import useDarkMode from '../../hooks/useDarkTheme';
 
 interface IProps {
   children?: React.ReactNode;
@@ -7,7 +7,7 @@ interface IProps {
 }
 
 const BeautifyCard: React.FC<IProps> = ({ children, className, borderClassName }) => {
-  const isDark = app.extensionManager.setting.get('Comfy.ColorPalette') === 'dark';
+  const isDark = useDarkMode()
   return (
     <div className='sticky w-full'>
       <div className={`relative ${className || ''} ${isDark ? 'beautify-card-dark' : 'beautify-card-light'}`}>
