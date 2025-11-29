@@ -2,11 +2,12 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-06-16 16:50:17
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-10-20 17:28:25
+LastEditTime: 2025-11-25 15:37:50
 FilePath: /comfyui_copilot/backend/service/mcp-client.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
-from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key
+from ..service.workflow_rewrite_tools import get_current_workflow
+from ..utils.globals import BACKEND_BASE_URL, get_comfyui_copilot_api_key, DISABLE_WORKFLOW_GEN
 from .. import core
 import asyncio
 import os
@@ -20,7 +21,7 @@ try:
     from agents.mcp import MCPServerSse
     from agents.run import Runner
     from agents.tracing import set_tracing_disabled
-    from agents import handoff, RunContextWrapper
+    from agents import handoff, RunContextWrapper, HandoffInputData
     from agents.extensions import handoff_filters
     if not hasattr(__import__('agents'), 'Agent'):
         raise ImportError
@@ -34,6 +35,7 @@ except Exception:
 
 from ..agent_factory import create_agent
 from ..service.workflow_rewrite_agent import create_workflow_rewrite_agent
+from ..service.message_memory import message_memory_optimize
 from ..utils.request_context import get_rewrite_context, get_session_id, get_config
 from ..utils.logger import log
 from openai.types.responses import ResponseTextDeltaEvent
@@ -63,6 +65,44 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
         tuple: (text, ext) where text is accumulated text and ext is structured data
     """
     try:
+        def _strip_trailing_whitespace_from_messages(
+            msgs: List[Dict[str, Any]]
+        ) -> List[Dict[str, Any]]:
+            cleaned: List[Dict[str, Any]] = []
+            for msg in msgs:
+                role = msg.get("role")
+                # Only touch assistant messages to minimize impact
+                if role != "assistant":
+                    cleaned.append(msg)
+                    continue
+
+                msg_copy = dict(msg)
+                content = msg_copy.get("content")
+
+                # Simple string content
+                if isinstance(content, str):
+                    msg_copy["content"] = content.rstrip()
+                # OpenAI / Agents style list content blocks
+                elif isinstance(content, list):
+                    new_content = []
+                    for part in content:
+                        if isinstance(part, dict):
+                            part_copy = dict(part)
+                            # Common text block key is "text"
+                            text_val = part_copy.get("text")
+                            if isinstance(text_val, str):
+                                part_copy["text"] = text_val.rstrip()
+                            new_content.append(part_copy)
+                        else:
+                            new_content.append(part)
+                    msg_copy["content"] = new_content
+
+                cleaned.append(msg_copy)
+
+            return cleaned
+
+        messages = _strip_trailing_whitespace_from_messages(messages)
+
         # Get session_id and config from request context
         session_id = get_session_id()
         config = get_config()
@@ -71,6 +111,11 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             raise ValueError("No session_id found in request context")
         if not config:
             raise ValueError("No config found in request context")
+        
+        # Optimize messages with memory compression
+        log.info(f"[MCP] Original messages count: {len(messages)}")
+        messages = message_memory_optimize(session_id, messages)
+        log.info(f"[MCP] Optimized messages count: {len(messages)}, messages: {messages}")
         
         # Create MCP server instances
         mcp_server = MCPServerSse(
@@ -101,24 +146,116 @@ async def comfyui_agent_invoke(messages: List[Dict[str, Any]], images: List[Imag
             workflow_rewrite_agent_instance = create_workflow_rewrite_agent()
             
             class HandoffRewriteData(BaseModel):
-                rewrite_intent: str
+                latest_rewrite_intent: str
             
             async def on_handoff(ctx: RunContextWrapper[None], input_data: HandoffRewriteData):
-                get_rewrite_context().rewrite_intent = input_data.rewrite_intent
-                log.info(f"Rewrite agent called with intent: {input_data.rewrite_intent}")
+                get_rewrite_context().rewrite_intent = input_data.latest_rewrite_intent
+                log.info(f"Rewrite agent called with intent: {input_data.latest_rewrite_intent}")
             
+            def rewrite_handoff_input_filter(data: HandoffInputData) -> HandoffInputData:
+                """Filter to replace message history with just the rewrite intent"""
+                intent = get_rewrite_context().rewrite_intent
+                log.info(f"Rewrite handoff filter called. Intent: {intent}")
+                
+                # Construct a new HandoffInputData with cleared history
+                # We keep new_items (which contains the handoff tool call) so the agent sees the immediate trigger
+                # But we clear input_history to remove the conversation context
+                
+                new_history = ()
+                try:
+                    # Attempt to find a user message in history to clone/modify
+                    # This is a best-effort attempt to make the agent see the intent as a user message
+                    for item in data.input_history:
+                        # Check if item looks like a user message (has role='user')
+                        if hasattr(item, 'role') and getattr(item, 'role') == 'user':
+                             # Try to create a copy with new content if it's a Pydantic model
+                             if hasattr(item, 'model_copy'):
+                                 # Pydantic V2
+                                 new_item = item.model_copy(update={"content": intent})
+                                 new_history = (new_item,)
+                                 log.info("Successfully constructed new user message item for handoff (Pydantic V2)")
+                                 break
+                             elif hasattr(item, 'copy'):
+                                 # Pydantic V1
+                                 new_item = item.copy(update={"content": intent})
+                                 new_history = (new_item,)
+                                 log.info("Successfully constructed new user message item for handoff (Pydantic V1)")
+                                 break
+                except Exception as e:
+                    log.warning(f"Failed to construct user message item: {e}")
+                
+                # If we couldn't construct a user message, we return empty history.
+                # The agent will still see the handoff tool call in new_items, which contains the intent.
+                
+                return HandoffInputData(
+                    input_history=new_history,
+                    pre_handoff_items=(), # Clear pre-handoff items
+                    new_items=tuple(data.new_items), # Keep the handoff tool call
+                )
+
             handoff_rewrite = handoff(
                 agent=workflow_rewrite_agent_instance,
                 input_type=HandoffRewriteData,
+                input_filter=rewrite_handoff_input_filter,
                 on_handoff=on_handoff,
             )
             
+            # Construct instructions based on DISABLE_WORKFLOW_GEN
+            if DISABLE_WORKFLOW_GEN:
+                workflow_creation_instruction = """
+**CASE 3: SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow`.
+"""
+                workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST call `recall_workflow` tool to find existing similar workflows.
+"""
+            else:
+                workflow_creation_instruction = """
+**CASE 3: CREATE NEW / SEARCH WORKFLOW**
+IF the user wants to find or generate a NEW workflow from scratch.
+- Keywords: "create", "generate", "search", "find", "recommend", "生成", "查找", "推荐".
+- Action: Use `recall_workflow` AND `gen_workflow`.
+"""
+                workflow_constraint = """
+- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
+"""
+
             agent = create_agent(
                 name="ComfyUI-Copilot",
                 instructions=f"""You are a powerful AI assistant for designing image processing workflows, capable of automating problem-solving using tools and commands.
 
 When handing off to workflow rewrite agent or other agents, this session ID should be used for workflow data management.
 
+### PRIMARY DIRECTIVE: INTENT CLASSIFICATION & HANDOFF
+You act as a router. Your FIRST step is to classify the user's intent.
+
+**CASE 1: MODIFY/UPDATE/FIX CURRENT WORKFLOW (HIGHEST PRIORITY)**
+IF the user wants to:
+- Modify, enhance, update, or fix the CURRENT workflow/canvas.
+- Add nodes/features to the CURRENT workflow (e.g., "add LoRA", "add controlnet", "fix the error").
+- Change parameters in the CURRENT workflow.
+- Keywords: "modify", "update", "add", "change", "fix", "current", "canvas", "修改", "更新", "添加", "画布", "加一个", "换一个", "调一下".
+
+**ACTION:**
+- You MUST IMMEDIATELY handoff to the `Workflow Rewrite Agent`.
+- DO NOT call any other tools (like search_node, gen_workflow).
+- DO NOT ask for more details. Just handoff.
+
+**CASE 2: ANALYZE CURRENT WORKFLOW**
+IF the user wants to:
+- Analyze, explain, or understand the current workflow structure/logic.
+- Ask questions about the current workflow (e.g., "how does this work?", "explain the workflow").
+- Keywords: "analyze", "explain", "understand", "how it works", "workflow structure", "分析", "解释", "怎么工作的", "解读".
+
+**ACTION:**
+- You MUST call `get_current_workflow` to retrieve the workflow details.
+- Then, based on the returned workflow data, provide a detailed analysis or explanation to the user.
+
+{workflow_creation_instruction}
+
+### CONSTRAINT CHECKLIST
 You must adhere to the following constraints to complete the task:
 
 - [Important!] Respond must in the language used by the user in their question. Regardless of the language returned by the tools being called, please return the results based on the language used in the user's query. For example, if user ask by English, you must return
@@ -134,15 +271,11 @@ You must adhere to the following constraints to complete the task:
 - Printing the entire content of a file is strictly prohibited, as such actions have high costs and can lead to unforeseen consequences.
 - Ensure that when you call a tool, you have obtained all the input variables for that tool, and do not fabricate any input values for it.
 - Respond with markdown, using a minimum of 3 heading levels (H3, H4, H5...), and when including images use the format ![alt text](url),
-- [Critical!] When the user's intent is to get workflows or generate images with specific requirements, you MUST ALWAYS call BOTH recall_workflow tool AND gen_workflow tool to provide comprehensive workflow options. Never call just one of these tools - both are required for complete workflow assistance. First call recall_workflow to find existing similar workflows, then call gen_workflow to generate new workflow options.
+{workflow_constraint}
 - When the user's intent is to query, return the query result directly without attempting to assist the user in performing operations.
 - When the user's intent is to get prompts for image generation (like Stable Diffusion). Use specific descriptive language with proper weight modifiers (e.g., (word:1.2)), prefer English terms, and separate elements with commas. Include quality terms (high quality, detailed), style specifications (realistic, anime), lighting (cinematic, golden hour), and composition (wide shot, close up) as needed. When appropriate, include negative prompts to exclude unwanted elements. Return words divided by commas directly without any additional text.
 - If you cannot find the information needed to answer a query, consider using bing_search to obtain relevant information. For example, if search_node tool cannot find the node, you can use bing_search to obtain relevant information about those nodes or components.
 - If search_node tool cannot find the node, you MUST use bing_search to obtain relevant information about those nodes or components.
-
-- **DEBUG Intent** - When the user's intent is to debug workflow execution problems, runtime errors, or troubleshoot failed workflows (keywords: "debug", "调试", "工作流报错", "执行失败", "workflow failed", "node error", "runtime error", "不能运行", "出错了"), respond with: "Please click the 🪲 button in the bottom right corner to trigger debug"
-
-- **WORKFLOW REWRITE Intent** - [Critical!] When the user's intent is to functionally modify, enhance, or add NEW features to the current workflow OR modify the current canvas (keywords: "修改当前工作流", "更新工作流", "在当前工作流中添加", "添加功能", "enhance current workflow", "modify workflow", "add to current workflow", "update current workflow", "添加LoRA", "加个upscale", "add upscaling", "修改当前画布", "更新画布", "在画布中", "modify current canvas", "update canvas", "change canvas"), you MUST handoff to the Workflow Rewrite Agent immediately. This is for feature enhancements, not error fixes.
 
 - **ERROR MESSAGE ANALYSIS** - When a user pastes specific error text/logs (containing terms like "Failed", "Error", "Traceback", or stack traces), prioritize providing troubleshooting help rather than invoking search tools. Follow these steps:
   1. Analyze the error to identify the root cause (error type, affected component, missing dependencies, etc.)
@@ -158,6 +291,7 @@ You must adhere to the following constraints to complete the task:
                 """,
                 mcp_servers=server_list,
                 handoffs=[handoff_rewrite],
+                tools=[get_current_workflow],
                 config=config
             )
 
@@ -165,6 +299,12 @@ You must adhere to the following constraints to complete the task:
             # The caller has already handled image formatting within messages
             agent_input = messages
             log.info(f"-- Processing {len(messages)} messages")
+
+            # from agents import Agent, Runner, set_trace_processors, set_tracing_disabled, set_default_openai_api
+            # from langsmith.wrappers import OpenAIAgentsTracingProcessor
+            # set_tracing_disabled(False)
+            # set_default_openai_api("chat_completions")
+            # set_trace_processors([OpenAIAgentsTracingProcessor()])
 
             result = Runner.run_streamed(
                 agent,
@@ -463,10 +603,25 @@ You must adhere to the following constraints to complete the task:
                     finished = True
                         
                 elif "recall_workflow" in tool_results and "gen_workflow" not in tool_results:
-                    # Only recall_workflow was called, don't return ext, keep finished=false
-                    log.info("Only recall_workflow was called, waiting for gen_workflow, not returning ext")
-                    ext = None
-                    finished = False  # This is the key: keep finished=false to wait for gen_workflow
+                    if DISABLE_WORKFLOW_GEN:
+                        # If generation is disabled, we don't wait for gen_workflow
+                        log.info("Only recall_workflow was called and generation is disabled, returning its result")
+                        recall_result = tool_results["recall_workflow"]
+                        if recall_result["data"] and len(recall_result["data"]) > 0:
+                            ext = [{
+                                "type": "workflow",
+                                "data": recall_result["data"]
+                            }]
+                            log.info(f"Returning {len(recall_result['data'])} workflows from recall_workflow")
+                        else:
+                            ext = None
+                            log.error("recall_workflow failed or returned no data")
+                        finished = True
+                    else:
+                        # Only recall_workflow was called, don't return ext, keep finished=false
+                        log.info("Only recall_workflow was called, waiting for gen_workflow, not returning ext")
+                        ext = None
+                        finished = False  # This is the key: keep finished=false to wait for gen_workflow
                     
                 elif "gen_workflow" in tool_results and "recall_workflow" not in tool_results:
                     # Only gen_workflow was called, return its result normally
