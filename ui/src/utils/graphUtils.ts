@@ -15,55 +15,61 @@ import { loadApiWorkflowWithMissingNodes } from "./comfyuiWorkflowApi2Ui";
 
 export function addNodeOnGraph(type: string, options: any = {}) {
     const node = LiteGraph.createNode(type, "", options);
-    
+
     // 只在没有指定位置时，才设置节点到中心位置
     if (!options.pos) {
         // 获取画布的可视区域大小
         const rect = app.canvas.canvas.getBoundingClientRect();
-        
-        // 计算画布中心点
-        const centerX = (rect.width / 2) / app.canvas.ds.scale + (-app.canvas.ds.offset[0]) / app.canvas.ds.scale;
-        const centerY = (rect.height / 2) / app.canvas.ds.scale + (-app.canvas.ds.offset[1]) / app.canvas.ds.scale;
-        
-        // 设置节点位置到画布中心
+
+        // // 计算画布中心点
+        // const centerX = (rect.width / 2) / app.canvas.ds.scale + (-app.canvas.ds.offset[0]) / app.canvas.ds.scale;
+        // const centerY = (rect.height / 2) / app.canvas.ds.scale + (-app.canvas.ds.offset[1]) / app.canvas.ds.scale;
+        // // 设置节点位置到画布中心
+        // node.pos = [
+        //     centerX - node.size[0] / 2,
+        //     centerY - node.size[1] / 2
+        // ]
+
+        const areaX = app.canvas.visible_area?.[0] || 0;
+        const areaY = app.canvas.visible_area?.[1] || 0;
         node.pos = [
-            centerX - node.size[0] / 2,
-            centerY - node.size[1] / 2
-        ];
+            areaX + rect.width / app.canvas.ds.scale / 2 - node.size[0] / 2,
+            areaY + rect.height / app.canvas.ds.scale / 2 - node.size[1] / 2
+        ]
     }
-    
+
     app.graph.add(node);
     return node;
 }
 
 
-export function applyNewWorkflow(workflow:any): boolean {
+export function applyNewWorkflow(workflow: any): boolean {
     try {
         console.log('[graphUtils] Applying new workflow to canvas...', workflow);
-        
+
         // 确保app和graph对象存在
         if (!app || !app.graph) {
             console.error('[graphUtils] App or graph not available');
             return false;
         }
-        
+
         // ui格式的工作流
-        if(workflow.nodes) {
+        if (workflow.nodes) {
             console.log('[graphUtils] Loading UI format workflow with nodes:', workflow.nodes.length);
             app.loadGraphData(workflow);
         } else {
-        // api格式的工作流
+            // api格式的工作流
             console.log('[graphUtils] Loading API format workflow with node count:', Object.keys(workflow).length);
             // app.loadApiJson(workflow);
             loadApiWorkflowWithMissingNodes(workflow);
         }
-        
+
         // 确保画布重新渲染
         if (app.graph) {
             app.graph.setDirtyCanvas(false, true);
             console.log('[graphUtils] Canvas marked as dirty for re-rendering');
         }
-        
+
         console.log('[graphUtils] Workflow successfully applied to canvas');
         return true;
     } catch (error) {
@@ -94,7 +100,7 @@ export function applyNodeParameters(nodeParams: Record<string, Record<string, an
                 console.warn(`[graphUtils] Node ${nodeId} not found or has no widgets`);
                 return;
             }
-            
+
             // 遍历节点参数
             Object.entries(params).forEach(([paramName, value]) => {
                 // 在节点的widgets中查找对应的widget
@@ -139,7 +145,7 @@ export function applyParameterChanges(changes: Array<{ node_id: string; paramete
 
         // 将changes列表转换为nodeParams格式
         const nodeParams: Record<string, Record<string, any>> = {};
-        
+
         changes.forEach(change => {
             if (!nodeParams[change.node_id]) {
                 nodeParams[change.node_id] = {};
