@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-08-08 17:14:52
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-11-27 11:12:18
+LastEditTime: 2025-12-15 14:49:18
 FilePath: /comfyui_copilot/backend/utils/globals.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -114,6 +114,7 @@ WORKFLOW_LLM_BASE_URL = os.getenv("WORKFLOW_LLM_BASE_URL") or None
 WORKFLOW_LLM_MODEL = os.getenv("WORKFLOW_LLM_MODEL") or WORKFLOW_MODEL_NAME
 DISABLE_WORKFLOW_GEN = os.getenv("DISABLE_WORKFLOW_GEN") or False
 
+TENANT_ID = os.getenv("TENANT_ID") or None
 
 def apply_llm_env_defaults(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
