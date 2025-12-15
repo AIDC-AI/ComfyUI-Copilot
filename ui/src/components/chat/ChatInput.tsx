@@ -13,6 +13,7 @@ import { UploadedImage } from '../../types/types';
 import ImageUploadModal from './ImageUploadModal';
 import PackageDownloadModal from './ModelDownloadModal';
 import { getLocalStorage, LocalStorageKeys, setLocalStorage } from '../../utils/localStorageManager';
+import { RefreshCcw } from 'lucide-react';
 
 // Debug icon component
 const DebugIcon = ({ className }: { className: string }) => (
@@ -78,6 +79,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
     const [models, setModels] = useState<{label: ReactNode; name: string; image_enable: boolean }[]>([]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false)
 
     // 精确监听 textarea 的 scrollHeight 变化（处理 flex 布局）
     useEffect(() => {
@@ -138,17 +140,12 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
             onModelChange(list[0].name)
         }
         setLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_LIST, JSON.stringify(list));
-        setModels([...list,
-            {
-                "label": "reload",
-                "name": "reload",
-                "image_enable": true
-            }
-        ]);
+        setModels(list);
     }
 
     // Function to load models from API
     const loadModels = async () => {
+        setIsLoadingModels(true)
         try {
             const result = await WorkflowChatAPI.listModels();
             updateModels(result.models);
@@ -170,15 +167,11 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                     "label": "gpt-4.1",
                     "name": "gpt-4.1-2025-04-14-GlobalStandard",
                     "image_enable": true,
-                },
-                {
-                    "label": "reload",
-                    "name": "reload",
-                    "image_enable": true
                 }
             ]
             updateModels(list);
         }
+        setIsLoadingModels(false)
     };
 
     // Expose refreshModels method to parent component
@@ -318,21 +311,31 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
             {/* Bottom toolbar */}
             <div className="absolute bottom-2 left-3 right-12 flex items-center gap-2 
                           bg-white border-t border-gray-100 pt-1">
-                {/* Model selector dropdown */}
-                <select
-                    value={selectedModel}
-                    onChange={(e) => handleModelSelected(e.target.value)}
-                    className="px-1.5 py-0.5 text-xs rounded-md 
-                             border border-gray-200 bg-white text-gray-700
-                             focus:outline-none focus:ring-2 focus:ring-blue-500
-                             focus:border-transparent hover:bg-gray-50
-                             transition-colors border-0"
-                >
-                    {models?.map((model) => (
-                        <option value={model.name} key={model.name}>{model.label}</option>
-                    ))}
-                </select>
-
+                <div className='border-r border-gray-100 flex flex-row justify-center pr-2'>
+                    <button
+                        className={`${isLoadingModels ? 'text-gray-200' : 'text-gray-500'} transition-all hover:!text-gray-600`}
+                        onClick={loadModels}
+                        disabled={isLoadingModels}
+                    >
+                        <RefreshCcw className={`w-4 h-4 transition-transform ${isLoadingModels ? 'animate-spin' : ''}`} />
+                    </button>
+                    
+                    {/* Model selector dropdown */}
+                    <select
+                        value={selectedModel}
+                        disabled={isLoadingModels}
+                        onChange={(e) => handleModelSelected(e.target.value)}
+                        className="px-1.5 py-0.5 text-xs rounded-md 
+                                border border-gray-200 bg-white text-gray-700
+                                focus:outline-none focus:ring-2 focus:ring-blue-500
+                                focus:border-transparent hover:bg-gray-50
+                                transition-colors border-0"
+                    >
+                        {models?.map((model) => (
+                            <option value={model.name} key={model.name}>{model.label}</option>
+                        ))}
+                    </select>
+                </div>
                 {/* Upload image button */}
                 <ButtonWithModal 
                     buttonClass={`p-1.5 text-gray-500 bg-white border-none

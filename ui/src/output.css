@@ -1222,6 +1222,9 @@
   .pr-12 {
     padding-right: 3rem;
   }
+  .pr-2 {
+    padding-right: 0.5rem;
+  }
   .pr-4 {
     padding-right: 1rem;
   }
@@ -1344,6 +1347,9 @@
   .text-blue-800 {
     --tw-text-opacity: 1;
     color: rgb(30 64 175 / var(--tw-text-opacity, 1));
+  }
+  .text-gray-200 {
+    color: color-mix(in srgb, var(--p-text-color) 20%, transparent);
   }
   .text-gray-300 {
     color: color-mix(in srgb, var(--p-text-color) 30%, transparent);
@@ -1530,6 +1536,11 @@
   }
   .transition-opacity {
     transition-property: opacity;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+  .transition-transform {
+    transition-property: transform;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
   }
