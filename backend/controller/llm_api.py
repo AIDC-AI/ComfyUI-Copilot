@@ -2,7 +2,7 @@
 Author: ai-business-hql qingli.hql@alibaba-inc.com
 Date: 2025-07-14 16:46:20
 LastEditors: ai-business-hql ai.bussiness.hql@gmail.com
-LastEditTime: 2025-12-12 16:32:50
+LastEditTime: 2025-12-15 15:03:28
 FilePath: /comfyui_copilot/backend/controller/llm_api.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
@@ -12,7 +12,7 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 import json
 from typing import List, Dict, Any
 from aiohttp import web
-from ..utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, OPENAI_API_KEY, OPENAI_BASE_URL, is_lmstudio_url
+from ..utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, OPENAI_API_KEY, OPENAI_BASE_URL, TENANT_ID, is_lmstudio_url
 import server
 import requests
 from ..utils.logger import log
@@ -34,6 +34,19 @@ async def list_models(request):
     """
     try:
         log.info("Received list_models request")
+        if TENANT_ID:
+            model_list = [ "gemini-2.5-flash", "gpt-5-nano", "gpt-5-mini", "gpt-5" ]
+            llm_config = []
+            for model in model_list:
+                llm_config.append({
+                    "label": model,
+                    "name": model,
+                    "image_enable": True
+                })
+            return web.json_response({
+                "models": llm_config
+            })
+        
         openai_api_key = request.headers.get('Openai-Api-Key') or OPENAI_API_KEY or ""
         openai_base_url = request.headers.get('Openai-Base-Url') or OPENAI_BASE_URL or LLM_DEFAULT_BASE_URL
 
