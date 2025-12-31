@@ -93,7 +93,7 @@ ComfyUI API格式工作流是一个JSON对象，其中：
 
         # 调用LLM
         completion = client.chat.completions.parse(
-            model=WORKFLOW_MODEL_NAME,
+            model=(config or {}).get("model_select") or WORKFLOW_MODEL_NAME,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": context_info}
