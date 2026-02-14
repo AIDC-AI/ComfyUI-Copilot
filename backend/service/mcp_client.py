@@ -516,6 +516,21 @@ You must adhere to the following constraints to complete the task:
                             final_error_msg = error_msg or default_error_msg
                             yield (final_error_msg, None)
                             return
+                        elif "Failed to call a function" in error_msg or "failed_generation" in error_msg:
+                            yield (
+                                "The model failed to generate a valid tool call. "
+                                "Try a different model (e.g. `llama-3.3-70b-versatile` on Groq) "
+                                "or simplify your request.",
+                                None,
+                            )
+                            return
+                        elif "'required' present but 'properties' is missing" in error_msg:
+                            yield (
+                                "Tool schema validation failed. "
+                                "Please restart ComfyUI to pick up the latest fixes.",
+                                None,
+                            )
+                            return
                         else:
                             # Continue to normal processing, error will be handled by outer try-catch
                             break

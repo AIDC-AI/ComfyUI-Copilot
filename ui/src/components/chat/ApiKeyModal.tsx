@@ -38,6 +38,8 @@ const BASE_URL = config.apiBaseUrl
 
 const TAB_LIST = [
     'OpenAI',
+    'Groq',
+    'Anthropic',
     'LMStudio'
 ]
 
@@ -68,6 +70,12 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const [workflowLLMModels, setWorkflowLLMModels] = useState<string[]>([]);
     const [workflowLLMModelsLoading, setWorkflowLLMModelsLoading] = useState(false);
 
+    // Voice configuration (optional override)
+    const [voiceProvider, setVoiceProvider] = useState('auto');
+    const [voiceApiKey, setVoiceApiKey] = useState('');
+    const [voiceBaseUrl, setVoiceBaseUrl] = useState('');
+    const [showVoiceApiKey, setShowVoiceApiKey] = useState(false);
+
     const [activeTab, setActiveTab] = useState<string>(TAB_LIST[0]);
     const [tabStrMap, setTabStrMap] = useState<Record<string, Record<string, string>> | null>(null);
 
@@ -88,8 +96,8 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         setApiKey(initialApiKey);
         
         // Load OpenAI configuration from localStorage
-        const savedOpenaiApiKey = localStorage.getItem('openaiApiKey');
-        const savedOpenaiBaseUrl = localStorage.getItem('openaiBaseUrl');
+        const savedOpenaiApiKey = localStorage.getItem('openaiApiKey') || '';
+        const savedOpenaiBaseUrl = localStorage.getItem('openaiBaseUrl') || '';
         const savedWorkflowLLMApiKey = localStorage.getItem('workflowLLMApiKey');
         const savedWorkflowLLMBaseUrl = localStorage.getItem('workflowLLMBaseUrl');
         const savedWorkflowLLMModel = localStorage.getItem('workflowLLMModel');
@@ -109,6 +117,45 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         }
         if (savedWorkflowLLMModel) {
             setWorkflowLLMModel(savedWorkflowLLMModel);
+        }
+        
+        // Load voice configuration
+        const savedVoiceProvider = localStorage.getItem('voiceProvider') || 'auto';
+        const savedVoiceApiKey = localStorage.getItem('voiceApiKey') || '';
+        const savedVoiceBaseUrl = localStorage.getItem('voiceBaseUrl') || '';
+        setVoiceProvider(savedVoiceProvider);
+        setVoiceApiKey(savedVoiceApiKey);
+        setVoiceBaseUrl(savedVoiceBaseUrl);
+        
+        // Populate tabStrMap from localStorage so switching tabs doesn't reset values.
+        // Detect which tab the saved config belongs to and auto-switch to it.
+        const isLMStudioUrl = savedOpenaiBaseUrl.includes('localhost') || 
+                              savedOpenaiBaseUrl.includes('127.0.0.1') ||
+                              savedOpenaiBaseUrl.includes(':1234');
+        const isGroqUrl = savedOpenaiBaseUrl.includes('api.groq.com');
+        const isAnthropicUrl = savedOpenaiBaseUrl.includes('api.anthropic.com');
+        const savedTab = isGroqUrl ? 'Groq' : isAnthropicUrl ? 'Anthropic' : (savedOpenaiBaseUrl && isLMStudioUrl) ? 'LMStudio' : 'OpenAI';
+        
+        setTabStrMap(prev => {
+            const updated = { ...prev };
+            // Populate the detected tab with saved values
+            updated[savedTab] = {
+                ...updated[savedTab],
+                openaiApiKey: savedOpenaiApiKey,
+                openaiBaseUrl: savedOpenaiBaseUrl,
+            };
+            return updated;
+        });
+        
+        // Auto-switch to the tab that matches the saved config
+        if (savedOpenaiBaseUrl) {
+            if (isGroqUrl) {
+                setActiveTab('Groq');
+            } else if (isAnthropicUrl) {
+                setActiveTab('Anthropic');
+            } else if (isLMStudioUrl) {
+                setActiveTab('LMStudio');
+            }
         }
         
         // Fetch RSA public key
@@ -134,18 +181,20 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
         // Check if it looks like LMStudio URL
         const isLMStudio = openaiBaseUrl.toLowerCase().includes('localhost') || 
                           openaiBaseUrl.toLowerCase().includes('127.0.0.1') ||
-                          openaiBaseUrl.includes(':1234') ||
-                          openaiBaseUrl.includes(':1235');
+                          openaiBaseUrl.includes(':1234');
+        const isGroq = openaiBaseUrl.includes('api.groq.com');
+        const isAnthropic = openaiBaseUrl.includes('api.anthropic.com');
+        const providerName = isGroq ? 'Groq' : isAnthropic ? 'Anthropic' : isLMStudio ? 'LMStudio' : 'API';
         
         if (!openaiApiKey.trim() && !isLMStudio) {
             setVerificationResult({
                 success: false,
-                message: 'Please enter an API key or use LMStudio URL (localhost:1234)'
+                message: `Please enter a ${providerName} API key`
             });
             return;
         }
         
-        if (!rsaPublicKey && !isLMStudio) {
+        if (!rsaPublicKey && !isLMStudio && !isGroq && !isAnthropic) {
             setVerificationResult({
                 success: false,
                 message: 'RSA public key not available. Please try again later.'
@@ -162,8 +211,8 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
             setVerificationResult({
                 success: isValid,
                 message: isValid ? 
-                    (isLMStudio ? 'LMStudio connection successful!' : 'API key is valid!') : 
-                    (isLMStudio ? 'LMStudio connection failed. Please check if LMStudio server is running.' : 'Invalid API key. Please check and try again.')
+                    `${providerName} connection successful!` : 
+                    `${providerName} connection failed. Please check your ${isLMStudio ? 'server' : 'API key'}.`
             });
         } catch (error) {
             setVerificationResult({
@@ -178,8 +227,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
     const handleVerifyWorkflowLLMKey = async () => {
         const isLMStudio = workflowLLMBaseUrl.toLowerCase().includes('localhost') || 
                            workflowLLMBaseUrl.toLowerCase().includes('127.0.0.1') ||
-                           workflowLLMBaseUrl.includes(':1234') ||
-                           workflowLLMBaseUrl.includes(':1235');
+                           workflowLLMBaseUrl.includes(':1234');
 
         if (!workflowLLMApiKey.trim() && !isLMStudio) {
             setWorkflowVerificationResult({
@@ -239,8 +287,28 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
 
     const handleTabChange = (tab: string) => {
         setActiveTab(tab);
-        setOpenaiApiKey(tabStrMap?.[tab]?.openaiApiKey || '');
-        setOpenaiBaseUrl(tabStrMap?.[tab]?.openaiBaseUrl || '');
+        // Pre-fill base URL for known providers when switching to a fresh tab
+        const existing = tabStrMap?.[tab];
+        const hasExistingUrl = existing?.openaiBaseUrl && existing.openaiBaseUrl.trim() !== '';
+        const providerDefaults: Record<string, string> = {
+            'Groq': 'https://api.groq.com/openai/v1',
+            'Anthropic': 'https://api.anthropic.com/v1',
+            'LMStudio': 'http://localhost:1234/api/v1',
+            'OpenAI': '',
+        };
+        const baseUrl = hasExistingUrl ? existing!.openaiBaseUrl : (providerDefaults[tab] || '');
+        setOpenaiApiKey(existing?.openaiApiKey || '');
+        setOpenaiBaseUrl(baseUrl);
+        // Persist the default URL into tabStrMap so Save picks it up
+        if (!hasExistingUrl && providerDefaults[tab]) {
+            setTabStrMap(prev => ({
+                ...prev,
+                [tab]: {
+                    ...prev?.[tab],
+                    openaiBaseUrl: providerDefaults[tab],
+                }
+            }));
+        }
     }
 
     const handleSendEmail = async () => {
@@ -318,8 +386,27 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
             localStorage.removeItem('workflowLLMApiKey');
         }
         
+        // Save or clear Voice configuration
+        if (voiceProvider && voiceProvider !== 'auto') {
+            localStorage.setItem('voiceProvider', voiceProvider);
+        } else {
+            localStorage.removeItem('voiceProvider');
+        }
+        if (voiceApiKey.trim()) {
+            localStorage.setItem('voiceApiKey', voiceApiKey.trim());
+        } else {
+            localStorage.removeItem('voiceApiKey');
+        }
+        if (voiceBaseUrl.trim()) {
+            localStorage.setItem('voiceBaseUrl', voiceBaseUrl.trim());
+        } else {
+            localStorage.removeItem('voiceBaseUrl');
+        }
+        
         // Call configuration updated callback if OpenAI config has changed
         if ((hasOpenaiConfigChanged || hasWorkflowConfigChanged) && onConfigurationUpdated) {
+            // Clear model list cache so fresh models are fetched from the new LLM server
+            localStorage.removeItem('models_time');
             onConfigurationUpdated();
         }
         
@@ -405,13 +492,14 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                 
                 {/* LLM Configuration */}
                 <CollapsibleCard 
-                    title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">LLM Configuration (OpenAI / LMStudio / Custom)</h3>}
+                    title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">LLM Configuration (OpenAI / Groq / Anthropic / LMStudio)</h3>}
                     className='mb-4'
                 >
                     <div>
                         <div className='mb-4'>
                             {
                                 TAB_LIST?.map((tab) => <TabButton 
+                                    key={tab}
                                     active={activeTab === tab}
                                     onClick={() => handleTabChange(tab)}
                                 >
@@ -423,7 +511,7 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                         {
                             activeTab !== 'LMStudio' && <div className="mb-4">
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-2 mb-2">
-                                    API Key
+                                    {activeTab === 'Groq' ? 'Groq API Key' : activeTab === 'Anthropic' ? 'Anthropic API Key' : 'API Key'}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -439,7 +527,11 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                             }))
                                             setOpenaiApiKey(e.target.value)
                                         }}
-                                        placeholder="Enter your OpenAI API key "
+                                        placeholder={{
+                                            'Groq': 'Enter your Groq API key (gsk_...)',
+                                            'Anthropic': 'Enter your Anthropic API key (sk-ant-...)',
+                                            'OpenAI': 'Enter your OpenAI API key (sk-...)',
+                                        }[activeTab] || 'Enter your API key'}
                                         className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
                                         bg-gray-50 dark:bg-gray-700
                                         text-gray-900 dark:text-white
@@ -468,6 +560,58 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                 </div>
                             </div>
                         }
+                        {/* LMStudio API Token (optional) */}
+                        {
+                            activeTab === 'LMStudio' && <div className="mb-4">
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-2 mb-2">
+                                    API Token <span className="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showOpenaiApiKey ? "text" : "password"}
+                                        value={openaiApiKey}
+                                        onChange={(e) => {
+                                            setTabStrMap(prev => ({
+                                                ...prev,
+                                                [activeTab]: {
+                                                    ...prev?.[activeTab],
+                                                    openaiApiKey: e.target.value
+                                                }
+                                            }))
+                                            setOpenaiApiKey(e.target.value)
+                                        }}
+                                        placeholder="Leave empty unless auth is enabled in LMStudio"
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
+                                        bg-gray-50 dark:bg-gray-700
+                                        text-gray-900 dark:text-white
+                                        placeholder-gray-500 dark:placeholder-gray-400
+                                        focus:border-blue-500 dark:focus:border-blue-400 
+                                        focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
+                                        focus:outline-none"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 dark:text-gray-400 
+                                        hover:text-gray-700 dark:hover:text-gray-200 transition-colors bg-transparent border-none"
+                                        onClick={() => setShowOpenaiApiKey(!showOpenaiApiKey)}
+                                    >
+                                        {showOpenaiApiKey ? (
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                                <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+                                    Only needed if you enabled "Require Authentication" in LMStudio's Developer Settings
+                                </p>
+                            </div>
+                        }
                         
                         {/* Base URL */}
                         <div className="mb-4">
@@ -487,7 +631,12 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                     }))
                                     setOpenaiBaseUrl(e.target.value)
                                 }}
-                                placeholder={`${activeTab==='OpenAI' ? "https://api.openai.com/v1" : "http://localhost:1234/v1"}`}
+                                placeholder={{
+                                    'OpenAI': 'https://api.openai.com/v1',
+                                    'Groq': 'https://api.groq.com/openai/v1',
+                                    'Anthropic': 'https://api.anthropic.com/v1',
+                                    'LMStudio': 'http://localhost:1234/api/v1',
+                                }[activeTab] || 'https://api.openai.com/v1'}
                                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
                                 bg-gray-50 dark:bg-gray-700
                                 text-gray-900 dark:text-white
@@ -499,15 +648,27 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                         </div>
                         
                         <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                            {
-                                activeTab === 'LMStudio' && <div className="mb-1"><strong>� For LMStudio:</strong> http://localhost:1235/v1</div>
-                            }
-                            {
-                                activeTab === 'OpenAI' && <>
-                                    <div className="mb-1"><strong>🌐 For OpenAI:</strong> https://api.openai.com/v1 (requires API key)</div>
-                                    <div><strong>⚙️ For Custom:</strong> Any OpenAI-compatible server URL</div>
+                            {activeTab === 'LMStudio' && (
+                                <div className="mb-1"><strong>🔗 LMStudio:</strong> http://localhost:1234/api/v1 — ⚠️ Competes with ComfyUI for VRAM. Use 14B+ models for tool calling.</div>
+                            )}
+                            {activeTab === 'OpenAI' && (
+                                <>
+                                    <div className="mb-1"><strong>🌐 OpenAI:</strong> https://api.openai.com/v1 (requires API key)</div>
+                                    <div><strong>⚙️ Custom:</strong> Any OpenAI-compatible server URL</div>
                                 </>
-                            }
+                            )}
+                            {activeTab === 'Groq' && (
+                                <>
+                                    <div className="mb-1"><strong>⚡ Groq:</strong> Ultra-fast cloud inference — best for Agent Mode</div>
+                                    <div>Get a free API key at <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">console.groq.com</a></div>
+                                </>
+                            )}
+                            {activeTab === 'Anthropic' && (
+                                <>
+                                    <div className="mb-1"><strong>🧠 Anthropic:</strong> Claude models — excellent at tool calling and planning</div>
+                                    <div>Get an API key at <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">console.anthropic.com</a></div>
+                                </>
+                            )}
                         </div>
                         
                         {/* Verify Button */}
@@ -680,6 +841,125 @@ export function ApiKeyModal({ isOpen, onClose, onSave, initialApiKey = '', onCon
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </CollapsibleCard>
+                {/* Voice Configuration (Optional) */}
+                <CollapsibleCard 
+                    title={<h3 className="text-sm text-gray-900 dark:text-white font-medium">🎙️ Voice Configuration (Optional)</h3>}
+                    className='mb-4'
+                >
+                    <div>
+                        <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                            Voice features (mic input &amp; text-to-speech) are <strong>auto-detected</strong> from your chat provider.
+                            If your provider doesn't support voice (Anthropic, LMStudio), you can manually configure a voice provider here.
+                        </div>
+
+                        {/* Voice Provider */}
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Voice Provider
+                            </label>
+                            <select
+                                value={voiceProvider}
+                                onChange={(e) => {
+                                    setVoiceProvider(e.target.value);
+                                    // Auto-fill base URL when switching
+                                    if (e.target.value === 'groq') {
+                                        setVoiceBaseUrl('https://api.groq.com/openai/v1');
+                                    } else if (e.target.value === 'openai') {
+                                        setVoiceBaseUrl('https://api.openai.com/v1');
+                                    } else {
+                                        setVoiceBaseUrl('');
+                                    }
+                                }}
+                                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
+                                bg-gray-50 dark:bg-gray-700
+                                text-gray-900 dark:text-white
+                                focus:border-blue-500 dark:focus:border-blue-400 
+                                focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
+                                focus:outline-none"
+                            >
+                                <option value="auto">Auto-detect (from chat provider)</option>
+                                <option value="groq">Groq (Orpheus TTS + Whisper STT)</option>
+                                <option value="openai">OpenAI (tts-1 + Whisper)</option>
+                            </select>
+                        </div>
+
+                        {/* Only show API key / URL when not auto */}
+                        {voiceProvider !== 'auto' && (
+                            <>
+                                <div className="mb-4">
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Voice API Key
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type={showVoiceApiKey ? "text" : "password"}
+                                            value={voiceApiKey}
+                                            onChange={(e) => setVoiceApiKey(e.target.value)}
+                                            placeholder={voiceProvider === 'groq' ? 'Groq API key (gsk_...)' : 'OpenAI API key (sk-...)'}
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg pr-12 text-xs
+                                            bg-gray-50 dark:bg-gray-700 
+                                            text-gray-900 dark:text-white
+                                            placeholder-gray-500 dark:placeholder-gray-400
+                                            focus:border-blue-500 dark:focus:border-blue-400 
+                                            focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
+                                            focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 dark:text-gray-400 
+                                            hover:text-gray-700 dark:hover:text-gray-200 transition-colors bg-transparent border-none"
+                                            onClick={() => setShowVoiceApiKey(!showVoiceApiKey)}
+                                        >
+                                            {showVoiceApiKey ? (
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                        Leave empty to reuse your chat API key
+                                    </div>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Voice Server URL
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={voiceBaseUrl}
+                                        onChange={(e) => setVoiceBaseUrl(e.target.value)}
+                                        placeholder={voiceProvider === 'groq' ? 'https://api.groq.com/openai/v1' : 'https://api.openai.com/v1'}
+                                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-xs
+                                        bg-gray-50 dark:bg-gray-700 
+                                        text-gray-900 dark:text-white
+                                        placeholder-gray-500 dark:placeholder-gray-400
+                                        focus:border-blue-500 dark:focus:border-blue-400 
+                                        focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20
+                                        focus:outline-none"
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {voiceProvider === 'auto' && (
+                                <div>✅ <strong>Groq</strong> and <strong>OpenAI</strong> users get voice automatically. Anthropic/LMStudio users: select a provider above.</div>
+                            )}
+                            {voiceProvider === 'groq' && (
+                                <div>⚡ <strong>Groq:</strong> Orpheus TTS (6 voices) + Whisper STT — ultra-fast, free tier available at <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">console.groq.com</a></div>
+                            )}
+                            {voiceProvider === 'openai' && (
+                                <div>🌐 <strong>OpenAI:</strong> tts-1 (6 voices) + Whisper — reliable, usage-based pricing</div>
+                            )}
                         </div>
                     </div>
                 </CollapsibleCard>

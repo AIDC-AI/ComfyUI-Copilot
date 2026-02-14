@@ -3,11 +3,13 @@
 // Copyright (C) 2025 ComfyUI-Copilot Authors
 // Licensed under the MIT License.
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { BaseMessage } from './BaseMessage';
 import { ChatResponse } from "../../../types/types";
 import { useRef } from "react";
 import Markdown from '../../ui/Markdown';
+import { WorkflowChatAPI } from '../../../apis/workflowChatApi';
+import { Volume2, Square, Loader2 } from 'lucide-react';
 
 interface AIMessageProps {
   content: string;
@@ -60,8 +62,132 @@ const NodeParamsCard = ({ content }: { content: React.ReactNode }) => {
   );
 };
 
+// Cache voice capability check so we don't call API per message
+let _voiceCapCache: { tts: boolean } | null = null;
+let _voiceCapPromise: Promise<{ tts: boolean }> | null = null;
+
+function useVoiceAvailable(): boolean {
+  const [available, setAvailable] = useState(_voiceCapCache?.tts ?? false);
+  useEffect(() => {
+    if (_voiceCapCache !== null) {
+      setAvailable(_voiceCapCache.tts);
+      return;
+    }
+    if (!_voiceCapPromise) {
+      _voiceCapPromise = WorkflowChatAPI.voiceCapabilities().then(cap => {
+        _voiceCapCache = { tts: cap.tts };
+        return _voiceCapCache;
+      }).catch(() => {
+        _voiceCapCache = { tts: false };
+        return _voiceCapCache;
+      });
+    }
+    _voiceCapPromise.then(cap => setAvailable(cap.tts));
+  }, []);
+  return available;
+}
+
+// TTS playback button for AI messages
+const TTSButton = ({ text }: { text: string }) => {
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleClick = useCallback(async () => {
+    setError(null);
+
+    // If already playing, stop
+    if (playing && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      URL.revokeObjectURL(audioRef.current.src);
+      audioRef.current = null;
+      setPlaying(false);
+      return;
+    }
+
+    if (!text || text.trim().length === 0) return;
+    setLoading(true);
+
+    try {
+      const blob = await WorkflowChatAPI.textToSpeech(text);
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+        setPlaying(false);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+        setPlaying(false);
+      };
+
+      await audio.play();
+      setPlaying(true);
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      console.error('TTS playback failed:', msg);
+      // Detect terms acceptance error and show actionable alert
+      if (msg.includes('terms') || msg.includes('model_terms_required')) {
+        setError('terms_required');
+      } else {
+        setError(msg.length > 80 ? msg.slice(0, 77) + '...' : msg);
+        setTimeout(() => setError(null), 6000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [text, playing]);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className={`p-1 rounded-md hover:!text-gray-600 hover:!bg-gray-100 
+                   border-none bg-transparent transition-all duration-200 cursor-pointer 
+                   disabled:opacity-50 disabled:cursor-wait ${error ? 'text-red-400' : 'text-gray-400'}`}
+        title={error || (playing ? 'Stop audio' : 'Read aloud')}
+      >
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : playing ? (
+          <Square className="h-3.5 w-3.5 text-red-500" />
+        ) : (
+          <Volume2 className="h-3.5 w-3.5" />
+        )}
+      </button>
+      {error && error === 'terms_required' ? (
+        <div className="absolute bottom-full right-0 mb-1 px-2 py-1.5 text-xs bg-amber-50 border border-amber-300 rounded shadow-sm z-50 flex items-center gap-1.5 whitespace-nowrap">
+          <span className="text-amber-700">Accept Groq model terms first</span>
+          <a
+            href="https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-1.5 py-0.5 bg-amber-600 text-white rounded text-xs font-medium hover:!bg-amber-700 no-underline"
+            onClick={() => setTimeout(() => setError(null), 500)}
+          >
+            Open ↗
+          </a>
+          <button onClick={() => setError(null)} className="text-amber-400 hover:!text-amber-600 bg-transparent border-none cursor-pointer text-xs p-0">✕</button>
+        </div>
+      ) : error ? (
+        <div className="absolute bottom-full right-0 mb-1 px-2 py-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded shadow-sm whitespace-nowrap max-w-[280px] truncate z-50">
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 export function AIMessage({ content, name = 'Assistant', avatar, format, onOptionClick, extComponent, metadata, finished, debugGuide }: AIMessageProps) {
   const markdownWrapper = useRef<HTMLDivElement | null>(null)
+  const voiceAvailable = useVoiceAvailable();
 
   const renderContent = () => {
     try {
@@ -130,6 +256,16 @@ export function AIMessage({ content, name = 'Assistant', avatar, format, onOptio
     }
   };
 
+  // Extract plain text for TTS from message content
+  const getPlainText = (): string => {
+    try {
+      const response = JSON.parse(content) as ChatResponse;
+      return response.text || '';
+    } catch {
+      return content || '';
+    }
+  };
+
   return (
     <BaseMessage name={name}>
       <div className="w-full rounded-lg bg-gray-50 p-4 text-gray-900 text-sm break-words overflow-hidden">
@@ -170,6 +306,13 @@ export function AIMessage({ content, name = 'Assistant', avatar, format, onOptio
           }
           return null;
         })()}
+
+        {/* TTS read-aloud button — only show when message is finished and voice is available */}
+        {finished && voiceAvailable && getPlainText().length > 0 && (
+          <div className="mt-2 flex justify-end border-t border-gray-100 pt-1">
+            <TTSButton text={getPlainText()} />
+          </div>
+        )}
       </div>
     </BaseMessage>
   );

@@ -20,5 +20,9 @@ export {
     History as HistoryIcon,
     MessageCircleWarning as WarningIcon,
     CirclePlus as CirclePlusIcon,
-    FilePenLine as FilePenLineIcon
+    FilePenLine as FilePenLineIcon,
+    Mic as MicIcon,
+    MicOff as MicOffIcon,
+    Volume2 as SpeakerIcon,
+    Square as StopSquareIcon,
 } from 'lucide-react'; 

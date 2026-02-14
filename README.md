@@ -1,223 +1,287 @@
-[中文](./README_CN.md) ｜ English
+﻿[中文](./README_CN.md) | English
 
 <div align="center">
 
-# 🎯 ComfyUI-Copilot: Your Intelligent Assistant for ComfyUI
+# ComfyUI-Copilot-w-Agent
 
-<!-- Enhancing Image Generation Development with Smart Assistance -->
+### Your Intelligent ComfyUI Assistant - Now with Agent Mode, Voice, and Multi-Provider Support
 
-<h4 align="center">
+**A community-enhanced fork of [AIDC-AI/ComfyUI-Copilot](https://github.com/AIDC-AI/ComfyUI-Copilot)**
 
-<div align="center">
-<img src="https://img.shields.io/badge/Version-2.0.0-blue.svg" alt="版本"> 
-<img src="https://img.shields.io/github/stars/AIDC-AI/ComfyUI-Copilot?color=yellow" alt="星标">
-  <a href="https://discord.gg/rb36gWG9Se">
-    <img src="https://img.shields.io/badge/Discord-%20%235462eb?logo=discord&logoColor=%20%23f5f5f5" alt="Discord">
-  </a>    
-<a href="https://github.com/AIDC-AI/ComfyUI-Copilot/blob/main/assets/qrcode.png">
-    <img src="https://img.shields.io/badge/WeChat-brightgreen?logo=wechat&logoColor=white" alt="WeChat">
-  </a>        
-<a href="https://x.com/Pixelle_AI" target="_blank" rel="noopener">
-  <img src="https://img.shields.io/twitter/follow/Pixelle_AI?style=social" alt="Follow on X">
-</a>
-<a href="https://aclanthology.org/2025.acl-demo.61.pdf">
-  <img src="https://img.shields.io/badge/Paper-ACL2025-B31B1B?logo=arXiv&logoColor=white" alt="Paper">
-</a>
+<h4>
+
+<img src="https://img.shields.io/badge/Version-3.0.0-blue.svg" alt="Version">
+<img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 <img src="https://img.shields.io/badge/python-3.10%2B-purple.svg" alt="Python">
-<img src="https://img.shields.io/badge/License-MIT-green.svg" alt="许可证">
+<img src="https://img.shields.io/badge/Enhanced_by-Claude_Opus_4.6-orange.svg" alt="Claude Opus 4.6">
 
 </h4>
 
-
-👾 _**Alibaba International Digital Commerce**_ 👾
-
-
-</div>
-
-
-
-https://github.com/user-attachments/assets/4b5806b8-dd34-4219-ac9f-6896115c5600
-
-
-
-## 🌟 Introduction
-
-
-
-
-**ComfyUI-Copilot** is an AIGC intelligent assistant built on ComfyUI that provides comprehensive support for tedious workflow building, ComfyUI-related questions, parameter optimization and iteration processes! It streamlines the debugging and deployment of AI algorithms, making creative workflows more efficient and effortless.
-
-### 🎉 **Major Update on 2025.08.14：Evolving into a Workflow Development Coworker**
-
-The newly released **ComfyUI-Copilot v2.0** evolves from a "helper tool" into a "development partner"—not just assisting with workflow development, but capable of autonomously completing development tasks.
-We now cover the entire workflow lifecycle, including generation, debugging, rewriting, and parameter tuning, aiming to deliver a significantly enhanced creative experience. Key new features include:
-
-- 🔧 **One-Click Debug:**：Automatically detects errors in your workflow, precisely identifies issues, and provides repair suggestions.
-
-- 🔄 **Workflow Rewriting**：Optimizes the current workflow based on your description, such as adjusting parameters, adding nodes, and improving logic.
-
-- 🚀 **Enhanced Workflow Generation**：Understands your requirements more accurately and generates tailored workflows, lowering the barrier to entry for beginners.
-
-- 🧠 **Upgraded Agent Architecture**：Now aware of your local ComfyUI environment, Copilot delivers optimized, personalized solutions.
-
-✨ **Try the brand-new ComfyUI-Copilot v2.0 now and embark on an efficient creative journey!**
-
-<div align="center">
-<img src="assets/Framework-v3.png"/>
 </div>
 
 ---
-<div id="tutorial-start" />
-  
-## 🔥 Core Features (V2.0.0)
 
-- 1. 💎 **Generate First Version Workflow**: Based on your text description, we provide workflows that meet your needs, returning 3 high-quality workflows from our library and 1 AI-generated workflow. You can import them into ComfyUI with one click to start generating images.
-  - Simply type in the input box: I want a workflow for xxx.
-<img src="assets/工作流生成.gif"/>
-  
-- 2. 💎 **Workflow Debug**: Automatically analyze errors in workflows, help you fix parameter errors and workflow connection errors, and provide optimization suggestions.
-  - Among the 4 workflows returned above, when you select one and click Accept, it will be imported into the ComfyUI canvas. At this time, you can click the Debug button to start debugging.
-  - There is a Debug button in the upper right corner of the input box. Click it to directly debug the workflow on the current canvas.
-<img src="assets/debug.gif"/>
-  - If a missing model is identified, it will automatically prompt you to download the model.
-<div align="center">
-<img src="assets/Debug模型下载.jpg" width="50%"/>
-</div>
-  - You can also directly click the Model Download button below, enter the model keyword, and select the required model from the recommended models.
-<img src="assets/模型下载.jpg"/>
+## What's Different in This Fork?
 
-- 3. 💎 **Unsatisfied with Previous Workflow Results?**: Tell us what you're not satisfied with, and let us help you modify the workflow, add nodes, modify parameters, and optimize workflow structure.
-  - Type in the input box: Help me add xxx to the current canvas.
-  - Note: If the model is new after May 2025, such as wan2.2, it may cause the LLM to fail to understand and the process to interrupt. You can try adding expert experience to help the LLM better generate workflows.
-  - The workflow rewrite is difficult, and it carries a lot of context, so you need to control the context length, otherwise it is easy to interrupt. It is recommended to often click the Clear Context button in the upper right corner to control the conversation length.
-<img src="assets/改写.gif"/>
-<img src="assets/expert_add.jpg"/>
+This fork builds on the excellent [ComfyUI-Copilot v2.0](https://github.com/AIDC-AI/ComfyUI-Copilot) by AIDC-AI, adding significant new capabilities:
 
-- 4. 💎 **Parameter Tuning Too Painful?**: We provide parameter tuning tools. You can set parameter ranges, and the system will automatically batch execute different parameter combinations and generate visual comparison results to help you quickly find the optimal parameter configuration.
-  - Switch to the GenLab tab and follow the guidance. Note that the workflow must be able to run normally at this time to batch generate and evaluate parameters.
-<img src="assets/Genlab.gif"/>
-
-Want ComfyUI-Copilot to assist you in workflow development?
-- 5. 💎 **Node Recommendations**: Based on your description, recommend nodes you might need and provide recommendation reasons.
-  - Type in the input box: I want a node for xxx.
-<img src="assets/节点推荐.gif"/>
-
-- 6. 💎 **Node Query System**: Select a node on the canvas, click the node query button to explore the node in depth, view its description, parameter definitions, usage tips, and downstream workflow recommendations.
-  - Type in the input box: What's the usage, input and output of node xxx.
-<img src="assets/节点信息查询.gif"/>
-
-- 7. 💎 **Model Recommendations**: Based on your text requirements, Copilot helps you find base models and 'lora'.
-  - Type in the input box: I want a Lora that generates xxx images.
-
-![模型推荐1](https://github.com/user-attachments/assets/8e4cb19d-98a6-4444-82a4-23bf7608f127)
-
-- 8. 💎 **Downstream Node Recommendations**: After you select a node on the canvas, based on the existing nodes on your canvas, recommend downstream subgraphs you might need.
-<img src="assets/下游节点推荐.gif"/>
+| Feature | Upstream v2.0 | This Fork v3.0 |
+|---------|:---:|:---:|
+| **Agent Mode** (autonomous multi-step workflows) | - | Yes |
+| **Multi-Provider** (OpenAI, Groq, Anthropic, LMStudio) | OpenAI only | Yes |
+| **LM Studio Integration** (fixed and working) | Broken | Yes |
+| **Voice I/O** (STT + streaming TTS) | - | Yes |
+| **Provider-Aware Timeouts and Token Budgets** | - | Yes |
+| **Loop Prevention and Tool Budget Enforcement** | - | Yes |
+| **Fine-Tuning Pipeline** (Qwen3 QLoRA for tool-calling) | - | Yes |
+| Chat, Debug, Rewrite, GenLab | Yes | Yes |
 
 ---
 
-## 🚀 Getting Started
+## New Features
 
-**Repository Overview**: Visit the [GitHub Repository](https://github.com/AIDC-AI/ComfyUI-Copilot) to access the complete codebase.
+### Agent Mode - Autonomous Workflow Building
 
-#### Installation
-  1. Firstly, use git to install ComfyUI-Copilot in the ComfyUI custom_nodes directory:
+Agent Mode lets the AI autonomously plan and execute multi-step tasks on your ComfyUI canvas. Instead of asking for one thing at a time, describe your goal and the agent will:
 
-   ```bash
-   cd ComfyUI/custom_nodes
-   git clone git@github.com:AIDC-AI/ComfyUI-Copilot.git
-   ```
-   
-   or
-   
-   ```bash
-   cd ComfyUI/custom_nodes
-   git clone https://github.com/AIDC-AI/ComfyUI-Copilot
-   ```
+1. **Plan** - Break the goal into discrete tasks
+2. **Execute** - Search nodes, build workflows, set parameters
+3. **Validate** - Check the workflow for errors
+4. **Report** - Summarize what was done and ask for confirmation
 
-   Secondely, in the ComfyUI custom_nodes directory, find the ComfyUI-Copilot directory and install ComfyUI-Copilot dependencies
+Toggle Agent Mode with the robot button in the chat input. A visual step tracker shows real-time progress.
 
-   ```bash
-   cd ComfyUI/custom_nodes/ComfyUI-Copilot
-   pip install -r requirements.txt
-   ```
-   If you are a Windows user:
+**Architecture:**
+- `backend/service/agent_mode.py` - PLAN, EXECUTE, VALIDATE, REPORT loop
+- `backend/service/agent_mode_tools.py` - Task queue, tool call tracker, loop prevention
+- `ui/src/components/chat/AgentModeIndicator.tsx` - Visual progress indicator
 
-   ```bash
-   python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Copilot\requirements.txt
-   ```
-   
-
-  2. **Using ComfyUI Manager**: Open ComfyUI Manager, click on Custom Nodes Manager, search for ComfyUI-Copilot, and click the install button, remember to update the ComfyUI-Copilot to the latest version.
-     - The Manager requires permissions. To prevent errors during execution, it's recommended to run ComfyUI with "sudo python main.py".
-     - If you encounter an error during the update, try to delete the folder or click uninstall and then reinstall.
-     - If an error occurs during execution, it's recommended to use the bottom panel button in the upper right corner to trigger the Manager to install ComfyUI-Copilot. An error log will appear below. Take a screenshot and post it to your git issue.
-     - Using the Manager installation method is prone to bugs, so it's recommended to use the git installation method above.
-   <img src="assets/comfyui_manager.png"/>
-   <img src="assets/comfyui_manager_install.png"/>
-
-#### **Activation**
-After running the ComfyUI project, find the Copilot activation button on the left side of the panel to launch its service.
-<img src="assets/start.jpg"/>
-
-#### **API Key Generation**
-Click the * button, enter your email address in the popup window, and the API Key will be automatically sent to your email address later. After receiving the API Key, paste it into the input box, click the save button, and you can activate Copilot.
-<img src="assets/keygen.png"/>
-
-#### **Config your model(OpenAI/LMStudio)**
-Click the * button，config chat model and workflow generate model seperately.
-<div align="center">
-  <img width="50%" alt="image" src="https://github.com/user-attachments/assets/ae27f5d4-3cf8-4138-b7cb-1bd2555fcc06" />
-
-</div>
-
-#### **Note**：
-This project is continuously updated. Please update to the latest code to get new features. You can use git pull to get the latest code, or click "Update" in the ComfyUI Manager plugin.
-
----
-<div id="tutorial-end" />
-
-## 🤝 Contributions
-
-We welcome any form of contribution! Feel free to make issues, pull requests, or suggest new features.
+**Safety:**
+- Per-tool call limits (e.g., `search_nodes` max 4x, `save_workflow` max 5x)
+- Global tool budget of 30 calls per session
+- Hard kill if same tool+args repeated 3x in last 8 calls
+- 5-minute total timeout, 25 max agent turns
 
 ---
 
-## 📞 Contact Us
+### Multi-Provider Support
 
-For any queries or suggestions, please feel free to contact: ComfyUI-Copilot@service.alibaba.com.
-<div align="center">
-  <img src="assets/qrcode.png" width="20%"/> 
-   
-  WeChat
+Use any OpenAI-compatible provider - no lock-in.
 
-  <img width="20%" alt="image" src="https://github.com/user-attachments/assets/3f06ab60-5799-47ea-af7e-21f4e6671ad3" />
+| Provider | Base URL | Default Model | Notes |
+|----------|----------|---------------|-------|
+| **OpenAI** | `https://api.openai.com/v1` | `gemini-2.5-flash` | Full feature support |
+| **Groq** | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | Free tier, blazing fast |
+| **Anthropic** | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` | Via OpenAI compatibility |
+| **LM Studio** | `http://localhost:1234/v1` | Auto-detected | Fully local, no API key |
 
-  Discord: https://discord.gg/rb36gWG9Se
-</div>
+The settings modal has **4 tabs** with auto-fill base URLs and provider-specific placeholders. Provider is auto-detected from the base URL.
 
-
-## 📚 License
-
-This project is licensed under the MIT License - see the [LICENSE](https://opensource.org/licenses/MIT) file for details.
+**Provider-aware optimizations:**
+- Constrained providers (Groq free tier, LMStudio) get reduced tool sets and compressed prompts
+- Provider-specific HTTP timeouts (Groq 30s, Anthropic 60s, LMStudio/OpenAI 120s)
+- Rate-limit detection with automatic wait-and-retry
 
 ---
-## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AIDC-AI/ComfyUI-Copilot&type=Date)](https://star-history.com/#AIDC-AI/ComfyUI-Copilot&Date)
+### LM Studio Integration - Fixed
 
+The upstream LM Studio integration had several issues that made it non-functional:
 
+**What was broken:**
+- Port hint was wrong (1235 instead of 1234)
+- URL normalization failed - `/api/v1` was not being converted to `/v1` for the OpenAI SDK
+- Model listing did not parse LM Studio's native response format (`{"models": [...]}` with `key`/`display_name` fields)
+- API key was required even though LM Studio does not need one
+- The `Openai-Base-Url` header was not being sent from the frontend
+- No cache invalidation for model lists (stale after 24h)
 
+**What was fixed:**
+- Correct default URL: `http://localhost:1234/v1`
+- Automatic URL normalization (strips `/api` prefix, ensures `/v1` suffix)
+- Robust multi-format model list parser (handles both OpenAI and LM Studio response formats)
+- API key is optional - uses `"lmstudio-local"` placeholder when empty
+- Proper header forwarding for base URL
+- 24-hour cache invalidation for model lists
+- Auto-detection of LM Studio via URL patterns
 
+See [HOW_TO_USE_LMSTUDIO.md](HOW_TO_USE_LMSTUDIO.md) for setup instructions.
 
+---
 
+### Voice I/O - Talk to Your Copilot
 
+Full voice input/output with per-provider backend support:
 
+**Speech-to-Text (STT):**
+- Browser-based voice recording with Voice Activity Detection (VAD)
+- Auto-stops after 1.8 seconds of silence
+- Real-time volume visualization on the mic button
+- Groq: `whisper-large-v3-turbo` | OpenAI: `whisper-1`
 
+**Text-to-Speech (TTS):**
+- Streaming TTS that reads responses as they arrive
+- Sentence-boundary detection for natural pacing (min 40 chars per chunk)
+- Gapless audio queue for smooth playback
+- Groq: Orpheus TTS (200 char chunks, WAV) | OpenAI: tts-1 (4096 char chunks, MP3)
+- Toggle with the speaker button (purple when active)
 
+**Key files:**
+- `ui/src/utils/streamingTTS.ts` - Sentence extraction, audio queue, gapless playback
+- `ui/src/utils/vadRecorder.ts` - Web Audio AnalyserNode, RMS-based silence detection
+- `backend/controller/llm_api.py` - `_VOICE_PROVIDER_MAP`, TTS/STT endpoints, `GET /api/voice/capabilities`
 
+---
 
+### Fine-Tuning Pipeline
 
+A complete training pipeline for fine-tuning Qwen3 models on ComfyUI tool-calling tasks:
 
+`
+training/
+  generate_dataset.py    # 18 conversation generators, augmentation
+  validate_dataset.py    # 5-pass structural + semantic validation
+  train.py               # QLoRA training with Unsloth + GGUF export
+  tool_schemas.py        # 9 current + 8 future tool definitions
+  workflow_templates.py  # 11 workflow templates + parameter pools
+`
 
+**Designed for consumer GPUs:**
+- Chunked cross-entropy loss (128-token chunks, ~37 MB vs 1.18 GB full)
+- Windows WDDM-compatible gradient checkpointing (no CPU offloading)
+- Python 3.14 compatibility patches
+- RTX 5060 8GB validated (Qwen3-4B, 4-bit, 2048 seq len)
 
+---
+
+## Inherited Features (from Upstream v2.0)
+
+All original ComfyUI-Copilot features work as before:
+
+- **Workflow Generation** - Describe what you want, get 3 library matches + 1 AI-generated workflow
+- **One-Click Debug** - Auto-detect errors, fix parameters, repair connections
+- **Workflow Rewriting** - Modify existing workflows via natural language
+- **Parameter Tuning (GenLab)** - Batch parameter sweeps with visual comparison
+- **Node Recommendations** - Search and discover nodes by description
+- **Node Query** - Deep-dive into any node's inputs, outputs, and usage
+- **Model Recommendations** - Find checkpoints and LoRAs for your use case
+- **Downstream Node Suggestions** - Context-aware next-node recommendations
+
+---
+
+## Getting Started
+
+### Installation
+
+```bash
+cd ComfyUI/custom_nodes
+git clone https://github.com/vehoelite/ComfyUI-Copilot-w-Agent.git
+cd ComfyUI-Copilot-w-Agent
+pip install -r requirements.txt
+```
+
+Windows (embedded Python):
+```bash
+python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-Copilot-w-Agent\requirements.txt
+```
+
+### Configuration
+
+1. **Launch ComfyUI** and find the Copilot button on the left panel
+2. **Click the settings button** to open the API configuration modal
+3. **Choose your provider** tab (OpenAI, Groq, Anthropic, or LM Studio)
+4. **Enter your API key** (or leave empty for LM Studio)
+5. **Verify the connection** and select a model
+
+### Using Agent Mode
+
+1. Toggle the robot button in the chat input
+2. Describe your goal: *"Build a workflow that generates an image, upscales it 4x, and fixes faces"*
+3. Watch the agent plan and execute steps automatically
+4. Review the result and confirm or iterate
+
+### Using Voice
+
+1. Enable voice with the speaker button
+2. Click the microphone to speak your request
+3. AI responses will be read aloud as they stream in
+
+---
+
+## Architecture
+
+`
+Backend (Python)
+  OpenAI Agents SDK + aiohttp via ComfyUI's PromptServer
+  agent_factory.py        - Creates Agent with AsyncOpenAI client
+  service/
+    agent_mode.py          - Agent Mode orchestration (PLAN, EXECUTE, VALIDATE, REPORT)
+    agent_mode_tools.py    - Tool budget, loop prevention, task queue
+    mcp_client.py          - Main chat agent entry point
+    debug_agent.py         - Multi-agent workflow debugger
+    workflow_rewrite_agent.py - Workflow modification
+  controller/
+    conversation_api.py    - SSE streaming endpoints
+    llm_api.py             - Model listing, verification, TTS/STT, voice capabilities
+  utils/
+    globals.py             - detect_provider(), provider constants
+    comfy_gateway.py       - Wraps ComfyUI HTTP APIs
+
+Frontend (React + Vite + Tailwind)
+  workflowChat/workflowChat.tsx - Main chat + agent mode handling
+  components/chat/
+    ChatInput.tsx           - Agent mode toggle, voice buttons
+    AgentModeIndicator.tsx  - Visual step tracker
+    ApiKeyModal.tsx         - 4-tab provider configuration
+  apis/workflowChatApi.ts   - API layer (streamAgentMode, textToSpeech, etc.)
+  utils/
+    streamingTTS.ts         - Streaming text-to-speech with sentence extraction
+    vadRecorder.ts          - Voice activity detection recorder
+`
+
+---
+
+## Technical Decisions
+
+**Timeout Hierarchy:** Frontend SSE (360s) > Backend Agent (300s) > MCP session (180s) > MCP request (120s) > Provider HTTP (30-120s)
+
+**Canvas Rule:** Only `save_workflow` modifies the canvas. `explain_node` and `search_node` are read-only information tools.
+
+**Tool Enforcement:** Local models ignore prompt-level rules. Enforcement is at code level via tools that refuse to execute, plus stream-level kill switches.
+
+**None-safe metadata:** Uses `(meta.get("field") or "").lower()` with `if not isinstance(meta, dict): continue` guard.
+
+---
+
+## Contributing
+
+Contributions welcome! This fork aims to push ComfyUI-Copilot's capabilities forward while staying compatible with upstream.
+
+### Contributing to This Fork
+- **Bug reports** - Open an issue with reproduction steps
+- **Feature requests** - Describe the use case
+- **Pull requests** - Fork, branch, PR with clear description
+
+### Contributing Back to Original Repository
+Want to help contribute these enhancements to the original ComfyUI-Copilot project? See:
+- **[HOW_TO_SUBMIT_PR.md](./HOW_TO_SUBMIT_PR.md)** - Detailed guide for submitting PRs to upstream
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - General contribution guidelines
+- **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Quick start guide for getting your changes merged
+
+We've prepared comprehensive documentation to make it easy to contribute these fixes and features back to AIDC-AI's original repository.
+
+---
+
+## Credits
+
+- **[AIDC-AI](https://github.com/AIDC-AI)** - Original ComfyUI-Copilot (v2.0)
+- **Claude Opus 4.6** - Agent Mode, multi-provider support, voice I/O, LM Studio fixes, fine-tuning pipeline, and all enhancements in this fork
+- **[Unsloth](https://github.com/unslothai/unsloth)** - QLoRA training framework
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Original project: [AIDC-AI/ComfyUI-Copilot](https://github.com/AIDC-AI/ComfyUI-Copilot)

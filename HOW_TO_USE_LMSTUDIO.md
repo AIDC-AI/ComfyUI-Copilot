@@ -35,9 +35,8 @@ LMStudio allows you to run powerful language models locally on your machine. Her
 4. **Expand the configuration panel** if it's collapsed
 4. **Configure the settings**:
    - **API Key**: Leave this **completely empty** (LMStudio doesn't need one)
-   - **Server URL**: Enter `http://localhost:1234/v1` (or your custom port)
-     - If you changed LMStudio's port to 1235, use: `http://localhost:1235/v1`
-     - Always add `/v1` at the end
+   - **Server URL**: Enter `http://localhost:1234/api/v1` (or your custom port)
+     - Always add `/api/v1` at the end for LMStudio's native API
 6. **Click "Verify"** to test the connection
 7. **Save** the configuration
 

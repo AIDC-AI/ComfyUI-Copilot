@@ -40,6 +40,7 @@ import StartLink from "../components/ui/StartLink";
 import StartPopView from "../components/ui/StartPopView";
 import { LocalStorageKeys, setLocalStorage } from "../utils/localStorageManager";
 import TabButton from "../components/ui/TabButton";
+import { StreamingTTS } from "../utils/streamingTTS";
 
 const BASE_URL = config.apiBaseUrl
 
@@ -183,6 +184,13 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
     const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
     const [height, setHeight] = useState<number>(window.innerHeight);
     const [topPosition, setTopPosition] = useState<number>(0);
+    // Agent Mode state
+    const [agentMode, setAgentMode] = useState<boolean>(false);
+    // Voice Mode state — when true, responses auto-play via streaming TTS
+    const [voiceMode, setVoiceMode] = useState<boolean>(false);
+    const streamingTTSRef = useRef<StreamingTTS | null>(null);
+    // TTS terms acceptance alert
+    const [ttsTermsUrl, setTtsTermsUrl] = useState<string | null>(null);
     // 添加公告状态
     const [announcement, setAnnouncement] = useState<string>('');
     const [showAnnouncement, setShowAnnouncement] = useState<boolean>(false);
@@ -378,9 +386,18 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
             abortControllerRef.current = null;
             dispatch({ type: 'SET_LOADING', payload: false });
         }
+        // Stop any streaming TTS playback
+        if (streamingTTSRef.current) {
+            streamingTTSRef.current.stop();
+            streamingTTSRef.current = null;
+        }
     }
 
     const handleSendMessage = async () => {
+        // Route to agent mode handler if enabled
+        if (agentMode) {
+            return handleSendAgentMessage();
+        }
         if (messages?.[0]?.role === 'showcase') {
             dispatch({ type: 'CLEAR_MESSAGES' });
         }
@@ -415,6 +432,17 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
 
         // 创建新的 AbortController
         abortControllerRef.current = new AbortController();
+
+        // Start streaming TTS if voice mode is on
+        if (voiceMode) {
+            streamingTTSRef.current = new StreamingTTS({
+                onError: (msg) => {
+                    if (msg.includes('terms') || msg.includes('model_terms_required')) {
+                        setTtsTermsUrl('https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english');
+                    }
+                },
+            });
+        }
 
         try {
             const modelExt = { type: "model_select", data: [selectedModel] };
@@ -457,7 +485,14 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                     updateMessagesCache(updatedMessages);
                 }
 
+                // Feed streaming TTS
+                if (streamingTTSRef.current && response.text) {
+                    streamingTTSRef.current.feed(response.text);
+                }
+
                 if (response.finished) {
+                    streamingTTSRef.current?.flush();
+                    streamingTTSRef.current = null;
                     dispatch({ type: 'SET_LOADING', payload: false });
                     abortControllerRef.current = null;
                 }
@@ -469,6 +504,118 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
             } else {
                 console.error('Error sending message:', error);
             }
+            streamingTTSRef.current?.stop();
+            streamingTTSRef.current = null;
+            dispatch({ type: 'SET_LOADING', payload: false });
+            abortControllerRef.current = null;
+        } finally {
+            setUploadedImages([]);
+        }
+    };
+
+    // Agent Mode send handler
+    const handleSendAgentMessage = async () => {
+        if (input.trim() === "" || !sessionId) return;
+        if (messages?.[0]?.role === 'showcase') {
+            dispatch({ type: 'CLEAR_MESSAGES' });
+        }
+        showcasIng.current = false;
+        dispatch({ type: 'SET_LOADING', payload: true });
+        setLatestInput(input);
+
+        const traceId = generateUUID();
+        const userMessageId = generateUUID();
+        const userMessage: Message = {
+            id: userMessageId,
+            role: "user",
+            content: input,
+            trace_id: traceId,
+            metadata: { agent_mode: true },
+        };
+        dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+        setInput("");
+
+        abortControllerRef.current = new AbortController();
+
+        // Start streaming TTS if voice mode is on
+        if (voiceMode) {
+            streamingTTSRef.current = new StreamingTTS({
+                onError: (msg) => {
+                    if (msg.includes('terms') || msg.includes('model_terms_required')) {
+                        setTtsTermsUrl('https://console.groq.com/playground?model=canopylabs%2Forpheus-v1-english');
+                    }
+                },
+            });
+        }
+
+        try {
+            // Convert messages to format the backend expects
+            const historyMessages = state.messages
+                .filter(m => m.role === 'user' || m.role === 'ai')
+                .slice(-4) // Keep last 4 messages for context (Groq 6K TPM budget)
+                .map(m => ({
+                    role: m.role === 'ai' ? 'assistant' : 'user',
+                    content: m.role === 'ai' 
+                        ? (typeof m.content === 'string' && m.content.startsWith('{') 
+                            ? JSON.parse(m.content)?.text || m.content 
+                            : m.content)
+                        : m.content,
+                }));
+
+            // Add the new user message
+            historyMessages.push({ role: 'user', content: input });
+
+            let aiMessageId = generateUUID();
+            let isFirstResponse = true;
+
+            for await (const response of WorkflowChatAPI.streamAgentMode(
+                input,
+                historyMessages,
+                selectedModel,
+                abortControllerRef.current.signal,
+            )) {
+                const aiMessage: Message = {
+                    id: aiMessageId,
+                    role: "ai",
+                    content: JSON.stringify(response),
+                    format: response.format,
+                    finished: response.finished,
+                    name: "Agent",
+                    ext: response.ext,
+                    metadata: { agent_mode: true },
+                };
+
+                if (isFirstResponse) {
+                    dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+                    isFirstResponse = false;
+                } else {
+                    dispatch({ type: 'UPDATE_MESSAGE', payload: aiMessage });
+                    const updatedMessages = state.messages.map(msg =>
+                        msg.id === aiMessage.id && !msg.finished ? aiMessage : msg
+                    );
+                    updateMessagesCache(updatedMessages);
+                }
+
+                // Feed streaming TTS
+                if (streamingTTSRef.current && response.text) {
+                    streamingTTSRef.current.feed(response.text);
+                }
+
+                if (response.finished) {
+                    streamingTTSRef.current?.flush();
+                    streamingTTSRef.current = null;
+                    dispatch({ type: 'SET_LOADING', payload: false });
+                    abortControllerRef.current = null;
+                }
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('User aborted agent mode request');
+            } else {
+                console.error('Error in agent mode:', error);
+            }
+            streamingTTSRef.current?.stop();
+            streamingTTSRef.current = null;
             dispatch({ type: 'SET_LOADING', payload: false });
             abortControllerRef.current = null;
         } finally {
@@ -955,6 +1102,42 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                     className="border-t px-4 py-3 border-gray-200 bg-white sticky bottom-0"
                     style={{ display: activeTab === 'chat' ? 'block' : 'none' }}
                 >
+                    {/* Agent Mode active banner */}
+                    {agentMode && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 mb-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                            <span className="text-sm">🤖</span>
+                            <span className="font-medium">Agent Mode</span>
+                            <span className="text-blue-500">— autonomous planning &amp; execution</span>
+                        </div>
+                    )}
+                    {/* TTS Terms Acceptance Alert */}
+                    {ttsTermsUrl && (
+                        <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-800 shadow-sm">
+                            <span className="text-base">⚠️</span>
+                            <div className="flex-1">
+                                <span className="font-semibold">Voice requires Groq model terms acceptance.</span>
+                                <span className="ml-1">Click below to accept, then try again.</span>
+                            </div>
+                            <a
+                                href={ttsTermsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1 bg-amber-600 text-white rounded-md text-xs font-medium hover:!bg-amber-700 transition-colors no-underline whitespace-nowrap"
+                                onClick={() => {
+                                    // Don't dismiss immediately — user should come back and try again
+                                }}
+                            >
+                                Accept Terms ↗
+                            </a>
+                            <button
+                                onClick={() => setTtsTermsUrl(null)}
+                                className="p-0.5 text-amber-500 hover:!text-amber-700 bg-transparent border-none cursor-pointer"
+                                title="Dismiss"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {selectedNode && (
                         <SelectedNodeInfo 
                             nodeInfo={selectedNode}
@@ -978,6 +1161,10 @@ export default function WorkflowChat({ onClose, visible = true, triggerUsage = f
                         onModelChange={handleModelChange}
                         onStop={handleStop}
                         onAddDebugMessage={handleAddMessage}
+                        agentMode={agentMode}
+                        onAgentModeToggle={setAgentMode}
+                        voiceMode={voiceMode}
+                        onVoiceModeToggle={setVoiceMode}
                     />
 
                     <StartLink className="w-full mt-2 flex-1 flex justify-center items-center gap-1">

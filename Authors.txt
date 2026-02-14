@@ -1,4 +1,10 @@
 # Name or Organization <email address>
 
-AIDC-AI 
+# Original Authors
+AIDC-AI <original project maintainers>
 Christian Byrne <cbyrne@comfy.org>
+
+# Fork Contributors (v3.0 Enhancements)
+vehoelite <maintainer of enhanced fork>
+# Agent Mode, Multi-Provider Support, Voice I/O, LM Studio fixes, Fine-tuning pipeline
+# Implementation assistance by Claude Opus 4.6

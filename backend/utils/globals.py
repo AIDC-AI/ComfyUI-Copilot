@@ -100,7 +100,9 @@ def set_comfyui_copilot_api_key(api_key: str) -> None:
 
 
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "https://comfyui-copilot-server.onrender.com")
-LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1"
+LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/api/v1"
+GROQ_DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
+ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com/v1"
 WORKFLOW_MODEL_NAME = os.getenv("WORKFLOW_MODEL_NAME", "us.anthropic.claude-sonnet-4-20250514-v1:0")
 # WORKFLOW_MODEL_NAME = "gpt-5-2025-08-07-GlobalStandard"
 LLM_DEFAULT_BASE_URL = "https://comfyui-copilot-server.onrender.com/v1"
@@ -154,12 +156,40 @@ def is_lmstudio_url(base_url: str) -> bool:
         "127.0.0.1:1234",
         "0.0.0.0:1234",
         ":1234/v1",
-        "localhost:1235",        # Alternative port some users might use
-        "127.0.0.1:1235",
-        "0.0.0.0:1235",
-        ":1235/v1",
+        ":1234/api",             # LMStudio native API path
         "localhost/v1",          # Generic localhost patterns
-        "127.0.0.1/v1"
+        "127.0.0.1/v1",
+        "localhost/api/v1",
+        "127.0.0.1/api/v1"
     ]
 
     return any(pattern in base_url_lower for pattern in lmstudio_patterns)
+
+
+def is_groq_url(base_url: str) -> bool:
+    """Check if the base URL is Groq's API."""
+    if not base_url:
+        return False
+    return "api.groq.com" in base_url.lower()
+
+
+def is_anthropic_url(base_url: str) -> bool:
+    """Check if the base URL is Anthropic's API."""
+    if not base_url:
+        return False
+    return "api.anthropic.com" in base_url.lower()
+
+
+def detect_provider(base_url: str) -> str:
+    """Detect the LLM provider from the base URL.
+    Returns: 'groq', 'anthropic', 'lmstudio', or 'openai' (default).
+    """
+    if not base_url:
+        return "openai"
+    if is_groq_url(base_url):
+        return "groq"
+    if is_anthropic_url(base_url):
+        return "anthropic"
+    if is_lmstudio_url(base_url):
+        return "lmstudio"
+    return "openai"

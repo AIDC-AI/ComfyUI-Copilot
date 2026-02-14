@@ -21,6 +21,7 @@ import os
 import shutil
 
 from ..service.debug_agent import debug_workflow_errors
+from ..service.agent_mode import agent_mode_invoke
 from ..dao.workflow_table import save_workflow_data, get_workflow_data_by_id, update_workflow_ui_by_id
 from ..service.mcp_client import comfyui_agent_invoke
 from ..utils.request_context import set_request_context, get_session_id
@@ -1081,3 +1082,128 @@ async def model_paths(request):
             "success": False,
             "message": f"Get model failed: {str(e)}"
         })
+
+
+# ---------------------------------------------------------------------------
+# Agent Mode endpoint — autonomous multi-step planner/executor
+# Enhanced by Claude Opus 4.6
+# ---------------------------------------------------------------------------
+
+@server.PromptServer.instance.routes.post("/api/agent/invoke")
+async def invoke_agent_mode(request):
+    """
+    Agent Mode endpoint for autonomous multi-step workflow planning,
+    building, execution, and iteration.
+    """
+    log.info("Received agent-mode request")
+
+    extract_and_store_api_key(request)
+
+    req_json = await request.json()
+
+    response = web.StreamResponse(
+        status=200,
+        reason='OK',
+        headers={
+            'Content-Type': 'application/json',
+            'X-Content-Type-Options': 'nosniff'
+        }
+    )
+    await response.prepare(request)
+
+    session_id = req_json.get('session_id')
+    goal = req_json.get('goal', '')
+    messages = req_json.get('messages', [])
+
+    # Get configuration from headers (OpenAI settings)
+    config = {
+        "session_id": session_id,
+        "model": req_json.get('model', 'gemini-2.5-flash'),
+        **get_llm_config_from_headers(request),
+    }
+    config = apply_llm_env_defaults(config)
+
+    language = request.headers.get('Accept-Language', 'en')
+    set_language(language)
+
+    set_request_context(session_id, None, config)
+
+    log.info(f"Agent mode config: model={config.get('model')}, session={session_id}")
+    log.info(f"Agent mode goal: {goal}")
+
+    try:
+        accumulated_text = ""
+        final_ext_data = None
+        finished = False
+
+        async for result in agent_mode_invoke(messages, goal=goal):
+            if isinstance(result, tuple) and len(result) == 2:
+                text, ext = result
+                if text:
+                    accumulated_text = text
+
+                if ext:
+                    if isinstance(ext, dict) and "data" in ext and "finished" in ext:
+                        final_ext_data = ext["data"]
+                        finished = ext["finished"]
+
+                        chat_response = ChatResponse(
+                            session_id=session_id,
+                            text=accumulated_text,
+                            finished=finished,
+                            type="agent_mode",
+                            format="markdown",
+                            ext=final_ext_data
+                        )
+                        await response.write(json.dumps(chat_response).encode() + b"\n")
+                    else:
+                        final_ext_data = ext
+                        chat_response = ChatResponse(
+                            session_id=session_id,
+                            text=accumulated_text,
+                            finished=False,
+                            type="agent_mode",
+                            format="markdown",
+                            ext=ext if isinstance(ext, list) else [ext] if ext else None
+                        )
+                        await response.write(json.dumps(chat_response).encode() + b"\n")
+                else:
+                    chat_response = ChatResponse(
+                        session_id=session_id,
+                        text=accumulated_text,
+                        finished=False,
+                        type="agent_mode",
+                        format="markdown",
+                        ext=None
+                    )
+                    await response.write(json.dumps(chat_response).encode() + b"\n")
+
+                await asyncio.sleep(0.01)
+
+        # Final response
+        final_response = ChatResponse(
+            session_id=session_id,
+            text=accumulated_text,
+            finished=True,
+            type="agent_mode",
+            format="markdown",
+            ext=final_ext_data if isinstance(final_ext_data, list) else [{"type": "agent_complete", "data": {"status": "completed"}}]
+        )
+        await response.write(json.dumps(final_response).encode() + b"\n")
+
+    except Exception as e:
+        log.error(f"Agent mode error: {e}")
+        import traceback
+        traceback.print_exc()
+        error_response = ChatResponse(
+            session_id=session_id,
+            text=f"❌ Agent Mode Error: {str(e)}",
+            finished=True,
+            type="agent_mode",
+            format="markdown",
+            ext=[{"type": "agent_error", "data": {"error": str(e)}}]
+        )
+        await response.write(json.dumps(error_response).encode() + b"\n")
+
+    await response.write_eof()
+    return response

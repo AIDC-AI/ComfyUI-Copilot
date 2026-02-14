@@ -1,7 +1,4 @@
-function getImportPath(filename) {
-            return `./${filename}`;
-        }
-            import{c as Wr,g as Wa}from"./vendor-react-ByKzdfMq.js";var Ya={exports:{}},rn={};/**
+import{c as Wr,g as Wa}from"./vendor-react-ByKzdfMq.js";var Ya={exports:{}},rn={};/**
  * @license React
  * react-jsx-runtime.production.js
  *

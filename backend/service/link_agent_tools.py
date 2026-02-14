@@ -11,7 +11,7 @@ from ..utils.comfy_gateway import get_object_info
 from ..utils.logger import log
 
 @function_tool
-async def analyze_missing_connections() -> str:
+async def analyze_missing_connections(reason: str = "analyze") -> str:
     """
     分析工作流中缺失的连接，枚举所有可能的连接选项和所需的新节点。
     

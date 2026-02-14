@@ -21,7 +21,7 @@ from ..utils.logger import log
 
 
 @function_tool
-async def run_workflow() -> str:
+async def run_workflow(reason: str = "run") -> str:
     """验证当前session的工作流并返回结果"""
     try:
         session_id = get_session_id()

@@ -31,3 +31,17 @@ backup
 .cache
 # dev
 ui/yarn.lock
+
+# Training artifacts
+training_venv/
+training/training_data.jsonl
+training/outputs/
+training/test_triton.py
+unsloth_compiled_cache/
+*.gguf
+# Training debug artifacts
+training/dry_run*.txt
+training/training_log.txt
+training/README.md
+package-lock.tar
+.github/instructions/memory.instructions.md

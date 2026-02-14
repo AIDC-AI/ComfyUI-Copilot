@@ -22,8 +22,13 @@ except Exception:
         "Alternatively, keep both by setting COMFYUI_COPILOT_PREFER_OPENAI_AGENTS=1 so this plugin prefers openai-agents."
     )
 from dotenv import dotenv_values
-from .utils.globals import LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL, get_comfyui_copilot_api_key, is_lmstudio_url
+from .utils.globals import (
+    LLM_DEFAULT_BASE_URL, LMSTUDIO_DEFAULT_BASE_URL,
+    GROQ_DEFAULT_BASE_URL, ANTHROPIC_DEFAULT_BASE_URL,
+    get_comfyui_copilot_api_key, is_lmstudio_url, detect_provider,
+)
 from openai import AsyncOpenAI
+import httpx
 
 
 from agents._config import set_default_openai_api
@@ -69,25 +74,69 @@ def create_agent(**kwargs) -> Agent:
         if config.get("openai_api_key") and config.get("openai_api_key") != "":
             api_key = config.get("openai_api_key")
 
+    # Detect provider from URL
+    provider = detect_provider(base_url)
+
     # Check if this is LMStudio and adjust API key handling
-    is_lmstudio = is_lmstudio_url(base_url)
+    is_lmstudio = provider == "lmstudio"
     if is_lmstudio and not api_key:
         # LMStudio typically doesn't require an API key, use a placeholder
         api_key = "lmstudio-local"
 
+    # Groq: ensure API key exists
+    if provider == "groq" and not api_key:
+        api_key = config.get("openai_api_key") or ""
+
+    # Anthropic: ensure API key exists
+    if provider == "anthropic" and not api_key:
+        api_key = config.get("openai_api_key") or ""
+
+    # The OpenAI SDK appends /chat/completions to the base_url.
+    # LMStudio's native API uses /api/v1/chat (not /api/v1/chat/completions),
+    # so we normalize /api/v1 to /v1 which hits the OpenAI-compatible endpoint.
+    sdk_base_url = base_url
+    if is_lmstudio and '/api/v1' in base_url:
+        sdk_base_url = base_url.replace('/api/v1', '/v1')
+
+    # Provider-specific timeout tuning:
+    # - Groq is blazing fast (cloud inference on LPU), 30s is generous
+    # - Anthropic cloud: 60s is usually plenty
+    # - LMStudio local: 120s because CPU offloading is slow
+    # - OpenAI/default: 120s
+    timeout_map = {
+        "groq": httpx.Timeout(30.0, connect=10.0),
+        "anthropic": httpx.Timeout(60.0, connect=10.0),
+        "lmstudio": httpx.Timeout(120.0, connect=15.0),
+        "openai": httpx.Timeout(120.0, connect=15.0),
+    }
+    _timeout = timeout_map.get(provider, timeout_map["openai"])
+
     client = AsyncOpenAI(
         api_key=api_key,
-        base_url=base_url,
+        base_url=sdk_base_url,
         default_headers=default_headers,
+        timeout=_timeout,
+        max_retries=1,
     )
 
     # Determine model with proper precedence:
-    # 1) Explicit selection from config (model_select from frontend)
+    # 1) Explicit selection from config (model_select or model from frontend)
     # 2) Explicit kwarg 'model' (call-site override)
-    model_from_config = (config or {}).get("model_select")
+    model_from_config = (config or {}).get("model_select") or (config or {}).get("model")
     model_from_kwargs = kwargs.pop("model", None)
 
     model_name = model_from_config or model_from_kwargs or "gemini-2.5-flash"
+
+    # Default model per provider when no model is explicitly selected
+    if model_name == "gemini-2.5-flash":
+        provider_default_models = {
+            "groq": "llama-3.3-70b-versatile",
+            "anthropic": "claude-sonnet-4-20250514",
+            "lmstudio": model_name,  # user must select from loaded models
+            "openai": "gpt-4.1-mini",
+        }
+        model_name = provider_default_models.get(provider, model_name)
+
     model = OpenAIChatCompletionsModel(model_name, openai_client=client)
 
     # Safety: ensure no stray 'model' remains in kwargs to avoid duplicate kwarg errors

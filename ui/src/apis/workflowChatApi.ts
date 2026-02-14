@@ -257,12 +257,12 @@ export namespace WorkflowChatAPI {
       };
       
       // Add OpenAI configuration headers if available
-      if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
-        try {
-          headers['Openai-Base-Url'] = openaiBaseUrl;
-        } catch (error) {
-          console.error('Error encrypting OpenAI API key:', error);
-        }
+      // Always send Base-Url if set (LMStudio doesn't require an API key)
+      if (openaiBaseUrl && openaiBaseUrl.trim() !== '') {
+        headers['Openai-Base-Url'] = openaiBaseUrl;
+      }
+      if (openaiApiKey && openaiApiKey.trim() !== '') {
+        headers['Openai-Api-Key'] = openaiApiKey;
       }
       // Add Workflow LLM headers if available
       if (workflowLLMBaseUrl) {
@@ -290,8 +290,6 @@ export namespace WorkflowChatAPI {
       let chatUrl = `/api/chat/invoke`
       if(intent && intent !== '') {
         chatUrl = `${BASE_URL}/api/chat/invoke`
-      } else {
-        headers['Openai-Api-Key'] = openaiApiKey;
       }
       const response = await fetch(chatUrl, {
         method: 'POST',
@@ -379,11 +377,14 @@ export namespace WorkflowChatAPI {
       };
       
       // Add OpenAI configuration headers if available
+      // Always send Base-Url if set (LMStudio doesn't require an API key)
+      if (openaiBaseUrl && openaiBaseUrl.trim() !== '') {
+        headers['Openai-Base-Url'] = openaiBaseUrl;
+      }
       if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
         try {
           const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey as string, rsaPublicKey as string);
           headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
-          headers['Openai-Base-Url'] = openaiBaseUrl;
         } catch (error) {
           console.error('Error encrypting OpenAI API key:', error);
         }
@@ -436,11 +437,14 @@ export namespace WorkflowChatAPI {
     };
     
     // Add OpenAI configuration headers if available
+    // Always send Base-Url if set (LMStudio doesn't require an API key)
+    if (openaiBaseUrl && openaiBaseUrl.trim() !== '') {
+      headers['Openai-Base-Url'] = openaiBaseUrl;
+    }
     if (openaiApiKey && openaiApiKey.trim() !== '' && rsaPublicKey) {
       try {
         const encryptedApiKey = await encryptWithRsaPublicKey(openaiApiKey as string, rsaPublicKey as string);
         headers['Encrypted-Openai-Api-Key'] = encryptedApiKey;
-        headers['Openai-Base-Url'] = openaiBaseUrl;
       } catch (error) {
         console.error('Error encrypting OpenAI API key:', error);
       }
@@ -578,7 +582,7 @@ export namespace WorkflowChatAPI {
     throw lastError;
   }
 
-  export async function listModels(): Promise<{ models: {label: string; name: string; image_enable: boolean }[] }> {
+  export async function listModels(): Promise<{ models: {label: string; name: string; image_enable: boolean; tier?: string; tier_label?: string }[] }> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'accept': 'application/json',
@@ -602,7 +606,7 @@ export namespace WorkflowChatAPI {
     
     const result = await response.json();
     
-    return result as { models: { label: string; name: string; image_enable: boolean }[] };
+    return result as { models: { label: string; name: string; image_enable: boolean; tier?: string; tier_label?: string }[] };
   }
 
   // Fetch models directly from an OpenAI-compatible LLM server via its /models endpoint
@@ -681,9 +685,12 @@ export namespace WorkflowChatAPI {
       };
       
       // Add OpenAI configuration headers if available
+      // Always send Base-Url if set (LMStudio doesn't require an API key)
+      if (openaiBaseUrl && openaiBaseUrl.trim() !== '') {
+        headers['Openai-Base-Url'] = openaiBaseUrl;
+      }
       if (openaiApiKey && openaiApiKey.trim() !== '') {
         headers['Openai-Api-Key'] = openaiApiKey;
-        headers['Openai-Base-Url'] = openaiBaseUrl;
       }
       // Add Workflow LLM headers if available
       if (workflowLLMBaseUrl) {
@@ -877,7 +884,215 @@ export namespace WorkflowChatAPI {
       throw error;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Agent Mode — autonomous multi-step planner/executor
+  // Enhanced by Claude Opus 4.6
+  // ---------------------------------------------------------------------------
+
+  export async function* streamAgentMode(
+    goal: string,
+    messages: any[],
+    model: string,
+    abortSignal?: AbortSignal
+  ): AsyncGenerator<ChatResponse> {
+    try {
+      const { openaiApiKey, openaiBaseUrl, workflowLLMApiKey, workflowLLMBaseUrl, workflowLLMModel } = getOpenAiConfig();
+      const browserLanguage = app.extensionManager.setting.get('Comfy.Locale');
+      const session_id = localStorage.getItem("sessionId") || null;
+      const apiKey = getApiKey();
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Authorization': `Bearer ${apiKey}`,
+        'trace-id': generateUUID(),
+        'Accept-Language': browserLanguage,
+      };
+
+      // Always send Base-Url if set (LMStudio doesn't require an API key)
+      if (openaiBaseUrl && openaiBaseUrl.trim() !== '') {
+        headers['Openai-Base-Url'] = openaiBaseUrl;
+      }
+      if (openaiApiKey && openaiApiKey.trim() !== '') {
+        headers['Openai-Api-Key'] = openaiApiKey;
+      }
+      if (workflowLLMBaseUrl) {
+        headers['Workflow-LLM-Base-Url'] = workflowLLMBaseUrl;
+      }
+      if (workflowLLMApiKey) {
+        headers['Workflow-LLM-Api-Key'] = workflowLLMApiKey;
+      }
+      if (workflowLLMModel) {
+        headers['Workflow-LLM-Model'] = workflowLLMModel;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 360000); // 6 min — slightly longer than backend's 5 min agent timeout
+
+      if (abortSignal) {
+        abortSignal.addEventListener('abort', () => {
+          clearTimeout(timeoutId);
+          controller.abort();
+        });
+      }
+
+      const response = await fetch('/api/agent/invoke', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          session_id: session_id,
+          goal: goal,
+          messages: messages,
+          model: model,
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Agent mode request failed: ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+      const messageId = generateUUID();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += new TextDecoder().decode(value);
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim()) {
+              yield {
+                ...JSON.parse(line) as ChatResponse,
+                message_id: messageId
+              };
+            }
+          }
+        }
+
+        // Process remaining buffer
+        if (buffer.trim()) {
+          try {
+            yield {
+              ...JSON.parse(buffer) as ChatResponse,
+              message_id: messageId
+            };
+          } catch (parseError) {
+            console.error('Error parsing final agent mode response:', parseError);
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+    } catch (error: unknown) {
+      console.error('Error in streamAgentMode:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        if (abortSignal?.aborted) {
+          throw error;
+        } else {
+          throw new Error('Agent mode request timed out after 5 minutes. Please try again.');
+        }
+      } else {
+        throw new Error(error instanceof Error ? error.message : 'An error occurred in agent mode.');
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Voice: shared header builder
+  // ---------------------------------------------------------------------------
+  function _voiceHeaders(): Record<string, string> {
+    const { openaiApiKey, openaiBaseUrl } = getOpenAiConfig();
+    const headers: Record<string, string> = {};
+    if (openaiApiKey) headers['Openai-Api-Key'] = openaiApiKey;
+    if (openaiBaseUrl) headers['Openai-Base-Url'] = openaiBaseUrl;
+
+    // Manual override from localStorage (set in ApiKeyModal → Voice config)
+    const vp = localStorage.getItem('voiceProvider');
+    const vk = localStorage.getItem('voiceApiKey');
+    const vu = localStorage.getItem('voiceBaseUrl');
+    if (vp) headers['Voice-Provider'] = vp;
+    if (vk) headers['Voice-Api-Key'] = vk;
+    if (vu) headers['Voice-Base-Url'] = vu;
+    return headers;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Voice: Capability check
+  // ---------------------------------------------------------------------------
+  export async function voiceCapabilities(): Promise<{
+    tts: boolean; stt: boolean;
+    tts_voices?: string[]; default_voice?: string; provider?: string;
+    error?: string;
+  }> {
+    try {
+      const headers = _voiceHeaders();
+      const response = await fetch('/api/voice/capabilities', { method: 'GET', headers });
+      return await response.json();
+    } catch {
+      return { tts: false, stt: false, error: 'Voice check failed' };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Voice: Text-to-Speech
+  // ---------------------------------------------------------------------------
+  export async function textToSpeech(
+    text: string,
+    voice?: string,
+  ): Promise<Blob> {
+    const headers = { ..._voiceHeaders(), 'Content-Type': 'application/json' };
+
+    const response = await fetch('/api/voice/tts', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text, voice }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(err.error || 'TTS request failed');
+    }
+
+    return response.blob();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Voice: Speech-to-Text
+  // ---------------------------------------------------------------------------
+  export async function speechToText(
+    audioBlob: Blob,
+  ): Promise<string> {
+    const headers = _voiceHeaders();
+
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.webm');
+
+    const response = await fetch('/api/voice/stt', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(err.error || 'STT request failed');
+    }
+
+    const result = await response.json();
+    return result.text || '';
+  }
 }
-
-  
-

@@ -2,9 +2,10 @@
 // Licensed under the MIT License.
 
 import { ChangeEvent, KeyboardEvent, useState, useRef, useEffect, useLayoutEffect, ReactNode, forwardRef, useImperativeHandle } from 'react';
-import { SendIcon, ImageIcon, XIcon, StopIcon } from './Icons';
+import { SendIcon, ImageIcon, XIcon, StopIcon, MicIcon, MicOffIcon } from './Icons';
 import { WorkflowChatAPI } from '../../apis/workflowChatApi';
 import { generateUUID } from '../../utils/uuid';
+import { VADRecorder } from '../../utils/vadRecorder';
 import ImageLoading from '../ui/Image-Loading';
 import { useChatContext } from '../../context/ChatContext';
 import RewriteExpertModal from './RewriteExpertModal';
@@ -12,8 +13,16 @@ import ButtonWithModal from '../ui/ButtonWithModal';
 import { UploadedImage } from '../../types/types';
 import ImageUploadModal from './ImageUploadModal';
 import PackageDownloadModal from './ModelDownloadModal';
-import { getLocalStorage, LocalStorageKeys, setLocalStorage } from '../../utils/localStorageManager';
+import { getLocalStorage, LocalStorageKeys, setLocalStorage, removeLocalStorage } from '../../utils/localStorageManager';
 import { RefreshCcw } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
+
+// Tier color mapping for model dropdown
+const TIER_COLORS: Record<string, { dot: string; text: string; bg: string }> = {
+    green:  { dot: '#22c55e', text: 'text-green-700',  bg: 'bg-green-50' },
+    yellow: { dot: '#eab308', text: 'text-yellow-700', bg: 'bg-yellow-50' },
+    red:    { dot: '#ef4444', text: 'text-gray-600',   bg: '' },
+};
 
 // Debug icon component
 const DebugIcon = ({ className }: { className: string }) => (
@@ -54,6 +63,10 @@ interface ChatInputProps {
     onModelChange: (model: string) => void;
     onStop?: () => void;
     onAddDebugMessage?: (message: any) => void;
+    agentMode?: boolean;
+    onAgentModeToggle?: (enabled: boolean) => void;
+    voiceMode?: boolean;
+    onVoiceModeToggle?: (enabled: boolean) => void;
 }
 
 export interface ChatInputRef {
@@ -73,13 +86,28 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
     onModelChange,
     onStop,
     onAddDebugMessage,
+    agentMode = false,
+    onAgentModeToggle,
+    voiceMode = false,
+    onVoiceModeToggle,
 }, ref) => {
     const { state, dispatch } = useChatContext();
     const { messages } = state;
-    const [models, setModels] = useState<{label: ReactNode; name: string; image_enable: boolean }[]>([]);
+    const [models, setModels] = useState<{label: ReactNode; name: string; image_enable: boolean; tier?: string; tier_label?: string }[]>([]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false)
+    const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [voiceAvailable, setVoiceAvailable] = useState(false);
+    const vadRecorderRef = useRef<VADRecorder | null>(null);
+    const [micVolume, setMicVolume] = useState(0);
+
+    // Check voice capabilities on mount and when config changes
+    useEffect(() => {
+        WorkflowChatAPI.voiceCapabilities().then(cap => {
+            setVoiceAvailable(cap.tts || cap.stt);
+        }).catch(() => setVoiceAvailable(false));
+    }, []);
 
     // 精确监听 textarea 的 scrollHeight 变化（处理 flex 布局）
     useEffect(() => {
@@ -131,7 +159,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
         }
     }, [input]);
 
-    const updateModels = (list: {label: string; name: string; image_enable: boolean }[]) => {
+    const updateModels = (list: {label: string; name: string; image_enable: boolean; tier?: string; tier_label?: string }[]) => {
         const selectedModel = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_SELECTED);
         // 之前记录的能在列表中找到，使用之前的记录。否则使用列表第一项重置
         if (selectedModel && list.findIndex(model => model.name === selectedModel) !== -1) {
@@ -146,32 +174,46 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
     // Function to load models from API
     const loadModels = async () => {
         setIsLoadingModels(true)
+        // Clear the cache timestamp so the next load always fetches fresh
+        removeLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME);
         try {
             const result = await WorkflowChatAPI.listModels();
-            updateModels(result.models);
+            if (result.models && result.models.length > 0) {
+                updateModels(result.models);
+                // Only cache the timestamp AFTER a successful load with real data
+                setLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME, new Date().getTime().toString());
+            } else {
+                // API returned empty — don't cache, use fallback
+                console.warn('listModels returned empty, using fallback');
+                loadFallbackModels();
+            }
         } catch (error) {
             console.error('Failed to load models:', error);
-            // Fallback to default models if API fails
-            const list = [
-                {
-                    "label": "gemini-2.5-flash",
-                    "name": "gemini-2.5-flash",
-                    "image_enable": true
-                },
-                {
-                    "label": "gpt-4.1-mini",
-                    "name": "gpt-4.1-mini-2025-04-14-GlobalStandard",
-                    "image_enable": true,
-                },
-                {
-                    "label": "gpt-4.1",
-                    "name": "gpt-4.1-2025-04-14-GlobalStandard",
-                    "image_enable": true,
-                }
-            ]
-            updateModels(list);
+            // Don't cache failed loads — fallback models should not persist as cache
+            loadFallbackModels();
         }
         setIsLoadingModels(false)
+    };
+
+    const loadFallbackModels = () => {
+        const list = [
+            {
+                "label": "gemini-2.5-flash",
+                "name": "gemini-2.5-flash",
+                "image_enable": true
+            },
+            {
+                "label": "gpt-4.1-mini",
+                "name": "gpt-4.1-mini-2025-04-14-GlobalStandard",
+                "image_enable": true,
+            },
+            {
+                "label": "gpt-4.1",
+                "name": "gpt-4.1-2025-04-14-GlobalStandard",
+                "image_enable": true,
+            }
+        ];
+        updateModels(list);
     };
 
     // Expose refreshModels method to parent component
@@ -181,20 +223,99 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
 
     // Load models on component mount
     useEffect(() => {
-        // 1天之内不再重新获取models
+        // Use cache within 24h if we have a successfully loaded list
         const currentTime = new Date().getTime()
         const time = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME);
-        // 一天之内使用当前缓存
         if (!!Number(time) && currentTime - Number(time) < 1000 * 60 * 60 * 24) {
             const list = getLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_LIST);
             if (!!list) {
                 updateModels(JSON.parse(list));
+                return;
             }
-            return;
         }
-        setLocalStorage(LocalStorageKeys.MODELS_POP_VIEW_TIME, new Date().getTime().toString());
+        // No valid cache — fetch fresh (loadModels sets timestamp on success)
         loadModels();
     }, []);
+
+    // -----------------------------------------------------------------------
+    // Mic recording (STT) with Voice Activity Detection (auto-stop on silence)
+    // -----------------------------------------------------------------------
+
+    /** Handle a completed audio blob from recording (VAD auto-stop or manual). */
+    const processAudioBlob = async (audioBlob: Blob) => {
+        if (audioBlob.size === 0) return;
+        try {
+            const text = await WorkflowChatAPI.speechToText(audioBlob);
+            if (text) {
+                const textarea = textareaRef.current;
+                if (textarea) {
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                        window.HTMLTextAreaElement.prototype, 'value'
+                    )?.set;
+                    const newValue = (textarea.value ? textarea.value + ' ' : '') + text;
+                    nativeInputValueSetter?.call(textarea, newValue);
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // In voice mode, auto-send after a short delay
+                    if (voiceMode) {
+                        setTimeout(() => onSend(), 150);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('STT failed:', err);
+        }
+    };
+
+    const startRecording = async () => {
+        // Clean up any existing recorder
+        if (vadRecorderRef.current) {
+            await vadRecorderRef.current.stop();
+        }
+
+        const vad = new VADRecorder({
+            silenceMs: 1800,       // 1.8s of silence → auto-stop
+            silenceThreshold: 0.012,
+            onSilenceStop: (blob) => {
+                setIsRecording(false);
+                setMicVolume(0);
+                processAudioBlob(blob);
+            },
+            onVolumeChange: (rms) => {
+                setMicVolume(Math.min(rms * 10, 1)); // normalize to 0-1
+            },
+            onStart: () => {
+                setIsRecording(true);
+            },
+            onError: (err) => {
+                console.error('Microphone access denied:', err);
+                setIsRecording(false);
+            },
+        });
+
+        vadRecorderRef.current = vad;
+        await vad.start();
+    };
+
+    const stopRecording = async () => {
+        if (vadRecorderRef.current) {
+            const blob = await vadRecorderRef.current.stop();
+            vadRecorderRef.current = null;
+            setIsRecording(false);
+            setMicVolume(0);
+            if (blob) {
+                processAudioBlob(blob);
+            }
+        }
+    };
+
+    const toggleRecording = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
 
     const handleDebugClick = () => {
         WorkflowChatAPI.trackEvent({
@@ -309,11 +430,11 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
             />
 
             {/* Bottom toolbar */}
-            <div className="absolute bottom-2 left-3 right-12 flex items-center gap-2 
-                          bg-white border-t border-gray-100 pt-1">
-                <div className='border-r border-gray-100 flex flex-row justify-center pr-2'>
+            <div className="absolute bottom-2 left-3 right-12 flex items-center gap-1.5 
+                          bg-white border-t border-gray-100 pt-1 z-10">
+                <div className='border-r border-gray-100 flex flex-row items-center pr-1.5 min-w-0 flex-shrink'>
                     <button
-                        className={`${isLoadingModels ? 'text-gray-200' : 'text-gray-500'} transition-all hover:!text-gray-600`}
+                        className={`p-1 rounded cursor-pointer ${isLoadingModels ? 'text-gray-200' : 'text-gray-500 hover:!text-gray-600 hover:!bg-gray-100 active:!scale-90'} transition-all`}
                         onClick={loadModels}
                         disabled={isLoadingModels}
                     >
@@ -325,20 +446,27 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                         value={selectedModel}
                         disabled={isLoadingModels}
                         onChange={(e) => handleModelSelected(e.target.value)}
-                        className="px-1.5 py-0.5 text-xs rounded-md 
-                                border border-gray-200 bg-white text-gray-700
-                                focus:outline-none focus:ring-2 focus:ring-blue-500
+                        className="px-1 py-0.5 text-xs rounded-md min-w-0
+                                bg-white text-gray-700
+                                focus:outline-none focus:ring-1 focus:ring-blue-500
                                 focus:border-transparent hover:bg-gray-50
                                 transition-colors border-0"
+                        style={{ maxWidth: '180px' }}
                     >
-                        {models?.map((model) => (
-                            <option value={model.name} key={model.name}>{model.label}</option>
-                        ))}
+                        {models?.map((model) => {
+                            const tier = (model as any).tier || 'red';
+                            const dot = tier === 'green' ? '🟢' : tier === 'yellow' ? '🟡' : '🔴';
+                            return (
+                                <option value={model.name} key={model.name}>
+                                    {dot} {model.label}
+                                </option>
+                            );
+                        })}
                     </select>
                 </div>
                 {/* Upload image button */}
                 <ButtonWithModal 
-                    buttonClass={`p-1.5 text-gray-500 bg-white border-none
+                    buttonClass={`flex-shrink-0 p-1.5 text-gray-500 bg-white border-none
                         hover:!bg-gray-100 hover:!text-gray-600 
                         transition-all duration-200 outline-none
                         ${!models?.find(model => model.name === selectedModel)?.image_enable ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -350,6 +478,55 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                         onClose={onClose}
                     />}
                 />
+                {/* Mic button for voice input (STT) — only when voice is available */}
+                {voiceAvailable && (
+                <button
+                    onClick={toggleRecording}
+                    className={`flex-shrink-0 p-1.5 rounded-md border-none transition-all duration-200 outline-none cursor-pointer relative
+                        ${isRecording
+                            ? 'bg-red-50 text-red-500 hover:!bg-red-100'
+                            : 'bg-white text-gray-500 hover:!bg-gray-100 hover:!text-gray-600'
+                        }`}
+                    title={isRecording ? 'Stop recording (or wait for silence)' : 'Voice input (auto-stops on silence)'}
+                    style={isRecording ? {
+                        boxShadow: `0 0 0 ${Math.max(1, micVolume * 6)}px rgba(239, 68, 68, ${0.2 + micVolume * 0.4})`,
+                    } : undefined}
+                >
+                    {isRecording
+                        ? <MicOffIcon className="h-4 w-4" />
+                        : <MicIcon className="h-4 w-4" />
+                    }
+                </button>
+                )}
+                {/* Voice Mode toggle — auto-read responses aloud */}
+                {voiceAvailable && onVoiceModeToggle && (
+                    <button
+                        onClick={() => onVoiceModeToggle(!voiceMode)}
+                        className={`flex-shrink-0 p-1.5 rounded-md border-none transition-all duration-200 outline-none cursor-pointer
+                            ${voiceMode
+                                ? 'bg-purple-50 text-purple-600 hover:!bg-purple-100'
+                                : 'bg-white text-gray-400 hover:!bg-gray-100 hover:!text-gray-600'
+                            }`}
+                        title={voiceMode ? 'Voice Mode ON — responses read aloud as they stream' : 'Enable Voice Mode (auto-read responses)'}
+                    >
+                        <Volume2 className="h-4 w-4" />
+                    </button>
+                )}
+                {/* Agent Mode toggle */}
+                {onAgentModeToggle && (
+                    <button
+                        onClick={() => onAgentModeToggle(!agentMode)}
+                        className={`flex-shrink-0 p-1 rounded-md border transition-all duration-200 text-xs font-medium flex items-center gap-1
+                            ${agentMode 
+                                ? 'bg-blue-50 border-blue-300 text-blue-700 hover:!bg-blue-100' 
+                                : 'bg-white border-gray-200 text-gray-500 hover:!bg-gray-100 hover:!text-gray-600'
+                            }`}
+                        title={agentMode ? 'Agent Mode ON — autonomous planner' : 'Enable Agent Mode'}
+                    >
+                        <span className="text-sm">🤖</span>
+                        <span className="hidden sm:inline">{agentMode ? 'Agent' : 'Agent'}</span>
+                    </button>
+                )}
             </div>
 
             {/* Send button */}
@@ -359,7 +536,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                 disabled={loading ? false : input.trim() === ''}
                 className="absolute bottom-3 right-3 p-2 rounded-md text-gray-500 bg-white border-none 
                          hover:!bg-gray-100 hover:!text-gray-600 disabled:opacity-50 
-                         transition-all duration-200 active:scale-95">
+                         transition-all duration-200 active:scale-95 z-10">
                 {loading ? (
                     <StopIcon className="h-5 w-5 text-red-500 hover:text-red-600" />
                 ) : (
