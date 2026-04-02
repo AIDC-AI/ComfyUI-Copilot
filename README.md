@@ -40,6 +40,18 @@ https://github.com/user-attachments/assets/4b5806b8-dd34-4219-ac9f-6896115c5600
 
 
 
+## ⚠️ Service Update & Adjustment Notice
+
+> **Kindly be informed:** Due to an internal service review and update, the following features will **no longer be available** soon:
+>
+> - Node information query
+> - Job recommendations
+> - Workflow generation
+>
+> All **Agent-related capabilities** remain fully available and are not affected by this change. We apologize for any inconvenience this may cause. Thank you for your understanding.
+
+---
+
 ## 🌟 Introduction
 
 
