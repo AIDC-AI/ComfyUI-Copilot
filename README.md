@@ -48,6 +48,8 @@ https://github.com/user-attachments/assets/4b5806b8-dd34-4219-ac9f-6896115c5600
 > - Job recommendations
 > - Workflow generation
 >
+> **The API service has been suspended.** To continue using Agent-related capabilities, please go to the **Settings page** and enter your own **API Key** and **Base URL**.
+>
 > All **Agent-related capabilities** remain fully available and are not affected by this change. We apologize for any inconvenience this may cause. Thank you for your understanding.
 
 ---
